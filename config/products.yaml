@@ -1,13 +1,18 @@
-# Liste des produits à surveiller quotidiennement.
+# Configuration des éléments surveillés quotidiennement.
 # Le scraper est sélectionné automatiquement selon le domaine de l'URL.
 #
-# Champs par produit :
-#   url    (requis)  : URL de la page produit
-#   label  (option.) : nom affiché dans le rapport (sinon récupéré depuis la page)
-#   sizes  (option.) : liste blanche des tailles à surveiller. Si absent, toutes
-#                      les tailles trouvées sur la page sont rapportées.
+# ⏳ EN ATTENTE de la liste définitive de Nuiman (sites + types d'accessoires).
+# Ci-dessous : quelques modèles d'exemple pour valider le rendu.
 
+# --- Produits unitaires ---
+# url (requis) · label (option.) · sizes (option., liste blanche de tailles)
 products:
   - url: https://www.dafy-moto.com/casque-exo-530-air-solid-scorpion-noir-brillant.html
   - url: https://www.dafy-moto.com/casque-nxr2-shoei-noir-mat.html
   - url: https://www.dafy-moto.com/casque-gt-air-3-shoei-noir-mat.html
+
+# --- Catégories (listing paginé automatiquement) ---
+# Décommenter pour surveiller une catégorie entière (gros volume).
+# categories:
+#   - https://www.dafy-moto.com/casques.html
+categories: []

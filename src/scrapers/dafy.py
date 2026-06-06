@@ -89,8 +89,78 @@ _EXTRACT_JS = r"""
 """
 
 
+# Collecte les URLs produits d'une page listing.
+# Un produit Dafy = /slug.html (un seul segment de path). On exclut les liens
+# de navigation/footer (catégories, marques, pages CMS).
+_LISTING_JS = r"""
+() => {
+  const out = new Set();
+  for (const a of document.querySelectorAll("a[href]")) {
+    if (a.closest("header, footer, nav")) continue;
+    const raw = a.getAttribute("href");
+    if (!raw) continue;
+    let u;
+    try { u = new URL(raw, location.origin); } catch (e) { continue; }
+    if (u.origin !== location.origin) continue;
+    const path = u.pathname;
+    if (!path.endsWith(".html")) continue;
+    if ((path.match(/\//g) || []).length !== 1) continue; // /xxx.html uniquement
+    if (path === "/casques.html") continue;
+    out.add(u.origin + path);
+  }
+  return [...out];
+}
+"""
+
+
+def _drop_generic_urls(urls: list[str]) -> list[str]:
+    """Retire les pages « génériques » Dafy (qui redirigent vers un coloris).
+
+    Une page générique a un slug qui est le préfixe d'un slug de variante
+    (ex: ``casque-atom-uni-all-one`` est préfixe de
+    ``casque-atom-uni-all-one-noir-mat``). On conserve les variantes coloris.
+    """
+    def slug(u: str) -> str:
+        return u.rsplit("/", 1)[-1].removesuffix(".html")
+
+    pairs = [(slug(u), u) for u in urls]
+    pairs.sort(key=lambda p: p[0])
+    keep: list[str] = []
+    n = len(pairs)
+    for i, (s, u) in enumerate(pairs):
+        # En ordre trié, une variante "s-..." suit immédiatement le générique "s".
+        is_generic = i + 1 < n and pairs[i + 1][0].startswith(s + "-")
+        if not is_generic:
+            keep.append(u)
+    return keep
+
+
 class DafyScraper(BaseScraper):
     domains = ("dafy-moto.com",)
+    site_name = "Dafy Moto"
+
+    async def list_product_urls(
+        self, page, category_url: str, max_pages: int = 300
+    ) -> list[str]:
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for p in range(1, max_pages + 1):
+            sep = "&" if "?" in category_url else "?"
+            url = category_url if p == 1 else f"{category_url}{sep}p={p}"
+            try:
+                await page.goto(url, wait_until="domcontentloaded")
+                await page.wait_for_timeout(700)
+            except Exception:
+                break
+            links = await page.evaluate(_LISTING_JS)
+            new = [u for u in links if u not in seen]
+            if not new:
+                # Page sans nouveau produit : fin de la pagination.
+                break
+            for u in new:
+                seen.add(u)
+                ordered.append(u)
+        return _drop_generic_urls(ordered)
 
     async def scrape(self, page: Page, product: ProductConfig) -> ProductResult:
         await page.goto(product.url, wait_until="domcontentloaded")
@@ -111,6 +181,7 @@ class DafyScraper(BaseScraper):
         return ProductResult(
             url=product.url,
             name=product.label or data["name"] or product.url,
+            site=self.site_name,
             price=data["price"],
             sizes=sizes,
             sold_out=sold_out,

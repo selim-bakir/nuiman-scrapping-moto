@@ -1,4 +1,9 @@
-"""Génération du rapport journalier au format texte (HTML Telegram)."""
+"""Génération du rapport journalier Telegram — ultra lisible, groupé par site.
+
+Principe : on met en avant les ALERTES (ruptures totales et tailles manquantes),
+groupées par site. Les modèles 100 % disponibles ne sont comptés que dans le
+résumé. Format HTML Telegram (gras, liens cliquables).
+"""
 
 from __future__ import annotations
 
@@ -9,58 +14,92 @@ from .models import Report, ProductResult
 # Limite Telegram d'un message : 4096 caractères. On découpe au besoin.
 TELEGRAM_MAX_LEN = 4096
 
+_MONTHS = [
+    "janvier", "février", "mars", "avril", "mai", "juin",
+    "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+]
 
-def _format_product(result: ProductResult) -> str:
-    if result.error:
-        return (
-            f"⚠️ <b>{html.escape(result.name)}</b>\n"
-            f"   Erreur de scraping : {html.escape(result.error)}"
-        )
 
-    lines = [f"<b>{html.escape(result.name)}</b>"]
-    if result.price:
-        lines.append(f"   💶 {html.escape(result.price)}")
+def _fr_date(dt) -> str:
+    return f"{dt.day} {_MONTHS[dt.month - 1]} {dt.year} à {dt:%Hh%M}"
 
-    if result.sold_out and not result.available_sizes:
-        lines.append("   🔴 Rupture totale (aucune taille disponible)")
 
-    if not result.sizes:
-        lines.append("   <i>Aucune taille détectée sur la page</i>")
-    else:
-        size_bits = []
-        for s in result.sizes:
-            icon = "🟢" if s.available else "🔴"
-            size_bits.append(f"{icon} {html.escape(s.size)}")
-        lines.append("   " + "  ".join(size_bits))
+def _clean_name(name: str) -> str:
+    # Allège le titre Dafy « Marque - Casque Modèle » → « Marque Modèle ».
+    return name.replace(" - Casque ", " ").replace("Casque ", "").strip()
+
+
+def _name_link(result: ProductResult) -> str:
+    name = html.escape(_clean_name(result.name))
+    return f'<a href="{html.escape(result.url)}">{name}</a>'
+
+
+def _sizes_line(result: ProductResult) -> str:
+    missing = " · ".join(html.escape(s) for s in result.unavailable_sizes)
+    return f"   ❌ <b>{missing}</b>"
+
+
+def _site_section(site: str, results: list[ProductResult]) -> str:
+    sold_out = [r for r in results if r.error is None and r.sold_out and not r.available_sizes]
+    partial = [r for r in results if r.error is None and r.available_sizes and r.unavailable_sizes]
+    ok = [r for r in results if r.error is None and not r.unavailable_sizes and not r.sold_out]
+    failed = [r for r in results if r.error is not None]
+    alerts = len(sold_out) + len(partial)
+
+    lines = [
+        "━━━━━━━━━━━━━━━━━━━━",
+        f"🌐 <b>{html.escape(site or 'Site inconnu')}</b>",
+        f"📦 {len(results)} réf.   ✅ {len(ok)} OK   🔴 {alerts} alerte(s)"
+        + (f"   ⚠️ {len(failed)} erreur(s)" if failed else ""),
+        "━━━━━━━━━━━━━━━━━━━━",
+    ]
+
+    if sold_out:
+        lines.append("")
+        lines.append(f"⛔ <b>RUPTURES TOTALES</b> · {len(sold_out)}")
+        for r in sold_out:
+            lines.append(f"• {_name_link(r)}")
+
+    if partial:
+        lines.append("")
+        lines.append(f"🔴 <b>TAILLES MANQUANTES</b> · {len(partial)}")
+        for r in partial:
+            lines.append("")
+            lines.append(_name_link(r))
+            lines.append(_sizes_line(r))
+
+    if not sold_out and not partial:
+        lines.append("")
+        lines.append("✅ Tout est disponible dans toutes les tailles.")
 
     return "\n".join(lines)
 
 
 def build_report_text(report: Report) -> str:
-    """Construit le texte complet du rapport (dispo + indispo, par taille)."""
-    date_str = report.generated_at.strftime("%d/%m/%Y %H:%M")
-    total = len(report.results)
-    ok = report.ok_results
-    failed = report.failed_results
+    """Construit le rapport ultra lisible, groupé par site."""
+    # Regroupement par site en conservant l'ordre d'apparition.
+    sites: dict[str, list[ProductResult]] = {}
+    for r in report.results:
+        sites.setdefault(r.site or "Site inconnu", []).append(r)
 
-    nb_sold_out = sum(1 for r in ok if r.sold_out and not r.available_sizes)
-    nb_partial = sum(
-        1 for r in ok if r.unavailable_sizes and r.available_sizes
+    total = len(report.results)
+    total_alerts = sum(
+        1
+        for r in report.results
+        if r.error is None and (r.unavailable_sizes or (r.sold_out and not r.available_sizes))
     )
 
     header = [
-        f"🏍️ <b>Rapport disponibilité moto</b> — {date_str}",
-        "",
-        f"📦 {total} modèle(s) surveillé(s)",
-        f"🔴 {nb_sold_out} en rupture totale · ⚖️ {nb_partial} partiellement indispo",
+        "🏍️ <b>RAPPORT DISPO MOTO</b>",
+        f"📅 {_fr_date(report.generated_at)}",
+        f"🌐 {len(sites)} site(s)   📦 {total} réf.   🔴 {total_alerts} alerte(s)",
     ]
-    if failed:
-        header.append(f"⚠️ {len(failed)} en erreur")
-    header.append("")
 
-    body = [_format_product(r) for r in report.results]
+    blocks = ["\n".join(header)]
+    for site, results in sites.items():
+        blocks.append(_site_section(site, results))
 
-    return "\n".join(header) + "\n" + "\n\n".join(body)
+    return "\n\n".join(blocks)
 
 
 def split_for_telegram(text: str, limit: int = TELEGRAM_MAX_LEN) -> list[str]:
@@ -71,7 +110,6 @@ def split_for_telegram(text: str, limit: int = TELEGRAM_MAX_LEN) -> list[str]:
     chunks: list[str] = []
     current = ""
     for line in text.split("\n"):
-        # Ligne unique trop longue : on la coupe brutalement.
         while len(line) > limit:
             if current:
                 chunks.append(current)

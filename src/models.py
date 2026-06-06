@@ -20,6 +20,7 @@ class ProductResult:
 
     url: str
     name: str
+    site: str | None = None
     price: str | None = None
     sizes: list[SizeStatus] = field(default_factory=list)
     # True quand le produit entier est en rupture (aucune taille disponible).
@@ -40,6 +41,7 @@ class ProductResult:
         return {
             "url": self.url,
             "name": self.name,
+            "site": self.site,
             "price": self.price,
             "sizes": [{"size": s.size, "available": s.available} for s in self.sizes],
             "sold_out": self.sold_out,
