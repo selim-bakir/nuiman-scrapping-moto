@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Env / secrets
+.env
+
+# Rapports générés
+reports/*.json
+reports/*.txt
+!reports/.gitkeep
+
+# OS
+.DS_Store
+
+# Playwright
+playwright-report/
