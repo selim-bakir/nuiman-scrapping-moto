@@ -12,6 +12,8 @@ class SizeStatus:
 
     size: str
     available: bool
+    # Date de réapprovisionnement prévue (ISO) si la taille est indispo, sinon None.
+    restock: str | None = None
 
 
 @dataclass
@@ -55,7 +57,10 @@ class ProductResult:
             "color": self.color,
             "price": self.price,
             "image": self.image,
-            "sizes": [{"size": s.size, "available": s.available} for s in self.sizes],
+            "sizes": [
+                {"size": s.size, "available": s.available, "restock": s.restock}
+                for s in self.sizes
+            ],
             "sold_out": self.sold_out,
             "error": self.error,
             "scraped_at": self.scraped_at.isoformat() if self.scraped_at else None,

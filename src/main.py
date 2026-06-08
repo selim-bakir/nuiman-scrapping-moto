@@ -20,6 +20,7 @@ import os
 import time
 
 from .config import ProductConfig, Settings, load_settings
+from .excel import build_xlsx
 from .models import ProductResult, Report
 from .report import (
     build_header_text,
@@ -27,9 +28,10 @@ from .report import (
     iter_sections,
     photo_caption,
     split_for_telegram,
+    to_report,
 )
 from .scrapers.registry import get_scraper
-from .telegram import send_message, send_photo, send_report
+from .telegram import send_document, send_message, send_photo, send_report
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -176,6 +178,12 @@ def _send_photo_report(token: str, chat_id: str, report: Report) -> int:
     send_message(token, chat_id, build_header_text(report))
     sent += 1
 
+    if not to_report(report.results):
+        send_message(
+            token, chat_id, "✅ Aucune rupture aujourd'hui : tous les casques sont dispo."
+        )
+        return sent + 1
+
     for label, helmets in iter_sections(report):
         send_message(token, chat_id, f"<b>━━━ {label} ━━━</b>")
         sent += 1
@@ -221,7 +229,12 @@ def main() -> int:
     saved = _save_report(report)
     text = build_report_text(report)
 
+    # Export Excel quotidien (snapshot complet, ruptures en tête).
+    xlsx_path = REPORTS_DIR / f"rapport_{report.generated_at:%Y-%m-%d}.xlsx"
+    build_xlsx(report, xlsx_path)
+
     print(f"Rapport sauvegardé : {saved}")
+    print(f"Export Excel : {xlsx_path}")
     print("-" * 60)
     print(text)
     print("-" * 60)
@@ -237,15 +250,21 @@ def main() -> int:
         )
         return 1
 
+    token, chat = settings.telegram_bot_token, settings.telegram_chat_id
     if args.text:
         chunks = split_for_telegram(text)
-        send_report(settings.telegram_bot_token, settings.telegram_chat_id, chunks)
+        send_report(token, chat, chunks)
         print(f"Rapport texte envoyé sur Telegram ({len(chunks)} message(s)).")
     else:
-        n = _send_photo_report(
-            settings.telegram_bot_token, settings.telegram_chat_id, report
-        )
+        n = _send_photo_report(token, chat, report)
         print(f"Rapport photo envoyé sur Telegram ({n} message(s)).")
+
+    # Envoi du fichier Excel en pièce jointe.
+    send_document(
+        token, chat, str(xlsx_path),
+        caption=f"📊 Export Excel — {report.generated_at:%d/%m/%Y}",
+    )
+    print(f"Export Excel envoyé sur Telegram : {xlsx_path.name}")
     return 0
 
 

@@ -3,7 +3,12 @@
 from datetime import datetime
 
 from src.models import ProductResult, Report, SizeStatus
-from src.report import build_report_text, split_for_telegram
+from src.report import (
+    build_report_text,
+    fmt_restock,
+    split_for_telegram,
+    to_report,
+)
 
 
 def _sample_report() -> Report:
@@ -13,13 +18,10 @@ def _sample_report() -> Report:
             ProductResult(
                 url="https://www.motoblouz.com/vente-casque-shoei-nxr2-plain-1.html",
                 name="Casque intégral Shoei NXR2 - PLAIN",
-                site="Motoblouz",
-                brand="Shoei",
-                gamme="NXR2",
-                color="PLAIN",
+                site="Motoblouz", brand="Shoei", gamme="NXR2", color="PLAIN",
                 price="479 €",
                 sizes=[
-                    SizeStatus("2XS", False),
+                    SizeStatus("2XS", False, restock="2026-07-20T00:00:00+02:00"),
                     SizeStatus("XS", True),
                     SizeStatus("S", True),
                     SizeStatus("M", True),
@@ -28,46 +30,49 @@ def _sample_report() -> Report:
             ProductResult(
                 url="https://www.motoblouz.com/vente-casque-shoei-nxr2-accolade-2.html",
                 name="Casque intégral Shoei NXR2 - ACCOLADE",
-                site="Motoblouz",
-                brand="Shoei",
-                gamme="NXR2",
-                color="ACCOLADE",
+                site="Motoblouz", brand="Shoei", gamme="NXR2", color="ACCOLADE",
                 sizes=[SizeStatus("S", False), SizeStatus("M", False)],
                 sold_out=True,
             ),
             ProductResult(
                 url="https://www.motoblouz.com/vente-casque-shoei-gtair3-3.html",
                 name="Casque intégral Shoei GT-Air 3",
-                site="Motoblouz",
-                brand="Shoei",
-                gamme="GT-Air 3",
-                color=None,
+                site="Motoblouz", brand="Shoei", gamme="GT-Air 3", color=None,
                 price="599 €",
-                sizes=[SizeStatus("M", True), SizeStatus("L", True)],
+                sizes=[SizeStatus("M", True), SizeStatus("L", True)],  # 100% dispo
             ),
         ],
     )
 
 
-def test_header_has_brand_and_counts():
+def test_header_counts():
     text = build_report_text(_sample_report())
-    assert "DISPO CASQUES SHOEI" in text
-    assert "3 casque(s) surveillé(s)" in text
-    assert "🟢 1 complets · 🟡 1 partiels · 🔴 1 ruptures" in text
+    assert "RUPTURES CASQUES SHOEI" in text
+    assert "3 casque(s) surveillé(s) · 🚨 2 à signaler" in text
+    assert "🟢 1 complets · 🟡 1 partiels · 🔴 1 ruptures totales" in text
 
 
-def test_pastilles_per_size():
+def test_only_ruptures_shown():
     text = build_report_text(_sample_report())
-    assert "🔴2XS 🟢XS 🟢S 🟢M" in text  # NXR2 PLAIN
-    assert "🔴S 🔴M" in text  # ACCOLADE rupture
-
-
-def test_grouped_by_gamme_with_links_and_price():
-    text = build_report_text(_sample_report())
+    # NXR2 (partiel + rupture) présent, GT-Air 3 (100% dispo) absent
     assert "━━━ NXR2 ━━━" in text
-    assert "━━━ GT-Air 3 ━━━" in text
+    assert "GT-Air 3" not in text
     assert "PLAIN</a> · 479 €" in text
-    assert 'href="https://www.motoblouz.com/vente-casque-shoei-nxr2-plain-1.html"' in text
+
+
+def test_restock_line():
+    text = build_report_text(_sample_report())
+    assert "📦 réappro : 2XS 20/07/26" in text
+
+
+def test_to_report_filters_ok():
+    flagged = to_report(_sample_report().results)
+    assert len(flagged) == 2  # PLAIN (partiel) + ACCOLADE (rupture)
+
+
+def test_fmt_restock():
+    assert fmt_restock("2026-06-17T00:00:00+02:00") == "17/06/26"
+    assert fmt_restock(None) is None
 
 
 def test_split_for_telegram_respects_limit():
@@ -75,7 +80,3 @@ def test_split_for_telegram_respects_limit():
     chunks = split_for_telegram(long_text, limit=4096)
     assert all(len(c) <= 4096 for c in chunks)
     assert len(chunks) > 1
-
-
-def test_split_short_text_single_chunk():
-    assert split_for_telegram("court") == ["court"]

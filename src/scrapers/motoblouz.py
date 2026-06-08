@@ -117,17 +117,36 @@ def parse_product(nuxt_data_text: str, fallback_url: str) -> dict:
     color = (color or "").strip() if color else None
 
     # Disponibilité agrégée par taille : dispo si au moins un SKU est `forSale`.
+    # Pour les tailles indispo, on récupère la date de réappro la plus proche
+    # (stocks.WEB.delay des SKU en attente de réassort).
     size_avail: dict[str, bool] = {}
+    size_restock: dict[str, str] = {}
     for sku in prod.get("skus") or []:
         if not isinstance(sku, dict):
             continue
+        forsale = bool(sku.get("forSale"))
+        web = (sku.get("stocks") or {}).get("WEB") or {}
+        delay = web.get("delay") if isinstance(web, dict) else None
         ma = sku.get("mappedAttributes") or {}
         for sz in ma.get("size") or []:
             if not isinstance(sz, str):
                 continue
-            size_avail[sz] = size_avail.get(sz, False) or bool(sku.get("forSale"))
+            size_avail[sz] = size_avail.get(sz, False) or forsale
+            # Date de réappro = delay d'un SKU indispo (la plus proche dans le temps).
+            if not forsale and isinstance(delay, str) and delay:
+                cur = size_restock.get(sz)
+                size_restock[sz] = delay if cur is None else min(cur, delay)
 
-    sizes = [SizeStatus(size=s, available=size_avail[s]) for s in _sort_sizes(list(size_avail))]
+    sizes = []
+    for s in _sort_sizes(list(size_avail)):
+        avail = size_avail[s]
+        sizes.append(
+            SizeStatus(
+                size=s,
+                available=avail,
+                restock=None if avail else size_restock.get(s),
+            )
+        )
     sold_out = (not prod.get("inStock")) or (bool(sizes) and not any(s.available for s in sizes))
 
     # Prix de vente TTC : sellPrice.inclTax d'un SKU du produit (le plus bas).
