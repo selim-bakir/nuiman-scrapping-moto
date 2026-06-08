@@ -108,23 +108,27 @@ def parse_product(nuxt_data_text: str, fallback_url: str) -> dict:
     else:
         brand = None
 
-    # Gamme = partie avant " - " ; coloris = partie après.
+    # Gamme = partie avant " - " ; finition/série = partie après.
     if " - " in name:
-        gamme, color = name.split(" - ", 1)
+        gamme, finition = name.split(" - ", 1)
     else:
-        gamme, color = name, None
+        gamme, finition = name, None
     gamme = (gamme or "").strip() or None
-    color = (color or "").strip() if color else None
+    finition = (finition or "").strip() if finition else None
 
     # Disponibilité agrégée par taille : dispo si au moins un SKU est `forSale`.
     # Pour les tailles indispo, on récupère la date de réappro la plus proche
     # (stocks.WEB.delay des SKU en attente de réassort).
     size_avail: dict[str, bool] = {}
     size_restock: dict[str, str] = {}
+    colors_seen: list[str] = []
     for sku in prod.get("skus") or []:
         if not isinstance(sku, dict):
             continue
         forsale = bool(sku.get("forSale"))
+        for c in (sku.get("mappedAttributes") or {}).get("color") or []:
+            if isinstance(c, str) and c not in colors_seen:
+                colors_seen.append(c)
         # Date de réappro = la plus proche parmi TOUS les entrepôts (pas que WEB).
         sku_delays = [
             w["delay"]
@@ -169,6 +173,16 @@ def parse_product(nuxt_data_text: str, fallback_url: str) -> dict:
                 pp = (pr.get("publicPrice") or {}).get("inclTax")
                 if pp is not None:
                     public_val = pp if public_val is None else min(public_val, pp)
+
+    # Coloris affiché = finition/série + couleurs réelles, pour distinguer les
+    # déclinaisons qui partagent le même nom (ex: "MIKE Blanc/Noir" ≠ "MIKE Gris/Vert").
+    colors_str = "/".join(colors_seen[:3]) if colors_seen else None
+    if finition and colors_str:
+        color = f"{finition} · {colors_str}"
+    elif finition:
+        color = finition
+    else:
+        color = colors_str
 
     # Photo principale : 1re image disponible du produit.
     image = None

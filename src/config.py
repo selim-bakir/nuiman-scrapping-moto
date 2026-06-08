@@ -31,6 +31,8 @@ class Settings:
     request_delay_ms: int
     products: list[ProductConfig]
     categories: list[str]
+    # Catégories de contrôle (Dafy) pour croiser la disponibilité.
+    cross_check: list[str]
     # Plafond de sécurité du nombre de produits scrapés (0 = illimité).
     max_products: int
 
@@ -76,5 +78,10 @@ def load_settings(products_path: Path | None = None) -> Settings:
         request_delay_ms=int(os.getenv("REQUEST_DELAY_MS", "250")),
         products=_load_products(products_path),
         categories=_load_categories(data),
+        cross_check=[
+            e.strip()
+            for e in (data.get("cross_check", []) or [])
+            if isinstance(e, str) and e.strip()
+        ],
         max_products=int(os.getenv("MAX_PRODUCTS", "0")),
     )

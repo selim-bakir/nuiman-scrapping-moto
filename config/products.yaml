@@ -10,3 +10,9 @@ categories:
 # --- Produits unitaires (optionnel) ---
 # url (requis) · label (option.) · sizes (option., liste blanche de tailles)
 products: []
+
+# --- Croisement / double-check (Dafy) ---
+# Catégories Dafy scrapées pour confirmer les ruptures Motoblouz par recoupement.
+cross_check:
+  - https://www.dafy-moto.com/marque/shoei/casque-integral.html
+  - https://www.dafy-moto.com/marque/shoei/casque-jet.html

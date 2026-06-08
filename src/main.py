@@ -21,6 +21,7 @@ import time
 
 from .config import ProductConfig, Settings, load_settings
 from .excel import build_xlsx
+from .matching import cross_check
 from .models import ProductResult, Report
 from .report import (
     build_header_text,
@@ -107,6 +108,37 @@ async def _expand_categories(context, settings: Settings) -> list[ProductConfig]
     return deduped
 
 
+async def _scrape_category_urls(context, cats: list[str], settings: Settings):
+    """Expanse une liste de catégories en URLs et scrape chacune."""
+    semaphore = asyncio.Semaphore(max(1, settings.concurrency))
+    urls: list[str] = []
+    page = await context.new_page()
+    page.set_default_timeout(settings.page_timeout_ms)
+    try:
+        for cat in cats:
+            scraper = get_scraper(cat)
+            if scraper is None:
+                continue
+            found = await scraper.list_product_urls(page, cat)
+            urls.extend(found)
+    finally:
+        await page.close()
+    # Dédup + (cross-check Shoei) on ne garde que les URLs de la marque suivie.
+    seen, ordered = set(), []
+    for u in urls:
+        if u not in seen and "shoei" in u.lower():
+            seen.add(u)
+            ordered.append(u)
+
+    async def _guarded(u: str) -> ProductResult:
+        async with semaphore:
+            return await _scrape_one(
+                context, ProductConfig(url=u), settings.page_timeout_ms, settings.request_delay_ms
+            )
+
+    return list(await asyncio.gather(*(_guarded(u) for u in ordered)))
+
+
 async def run_scraping(settings: Settings) -> Report:
     semaphore = asyncio.Semaphore(max(1, settings.concurrency))
 
@@ -127,32 +159,41 @@ async def run_scraping(settings: Settings) -> Report:
                     settings.request_delay_ms,
                 )
 
-        results = await asyncio.gather(*(_guarded(p) for p in products))
+        results = _dedupe_results(list(await asyncio.gather(*(_guarded(p) for p in products))))
+
+        # Double-check : scraping des sources de contrôle (Dafy) + croisement.
+        if settings.cross_check:
+            print("Croisement avec Dafy...")
+            dafy_results = await _scrape_category_urls(context, settings.cross_check, settings)
+            stats = cross_check(results, dafy_results)
+            print(
+                f"→ Dafy: {len(dafy_results)} casques · {stats['matched']} appariés · "
+                f"{stats['confirmed_ruptures']} ruptures confirmées · "
+                f"{stats['available_on_dafy']} dispo sur Dafy"
+            )
 
         await context.close()
         await browser.close()
 
-    return Report(generated_at=datetime.now(), results=_dedupe_results(list(results)))
+    return Report(generated_at=datetime.now(), results=results)
 
 
 def _dedupe_results(results: list[ProductResult]) -> list[ProductResult]:
-    """Fusionne les doublons (page générique + variante) par (site, nom).
+    """Déduplique par URL uniquement.
 
-    Les coloris distincts ont des noms différents et restent séparés. En cas de
-    doublon, on conserve le résultat le plus complet (sans erreur, plus de tailles).
+    Sur Motoblouz, chaque URL (ID produit) est un coloris/déclinaison distinct :
+    dédupliquer par nom fusionnerait des coloris différents partageant le même
+    nom court. On déduplique donc strictement par URL (et l'expansion des
+    catégories garantit déjà l'unicité des URLs).
     """
-    best: dict[tuple[str, str], ProductResult] = {}
-    order: list[tuple[str, str]] = []
+    best: dict[str, ProductResult] = {}
+    order: list[str] = []
     for r in results:
-        key = ((r.site or ""), (r.name or r.url).strip().lower())
-        if key not in best:
-            best[key] = r
-            order.append(key)
-            continue
-        cur = best[key]
-        better = (cur.error and not r.error) or (len(r.sizes) > len(cur.sizes))
-        if better:
-            best[key] = r
+        if r.url not in best:
+            best[r.url] = r
+            order.append(r.url)
+        elif best[r.url].error and not r.error:
+            best[r.url] = r
     return [best[k] for k in order]
 
 

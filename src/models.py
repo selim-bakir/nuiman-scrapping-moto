@@ -14,6 +14,8 @@ class SizeStatus:
     available: bool
     # Date de réapprovisionnement prévue (ISO) si la taille est indispo, sinon None.
     restock: str | None = None
+    # Croisement Dafy : True=dispo sur Dafy, False=indispo sur Dafy, None=non trouvé.
+    dafy_available: bool | None = None
 
 
 @dataclass
@@ -58,7 +60,12 @@ class ProductResult:
             "price": self.price,
             "image": self.image,
             "sizes": [
-                {"size": s.size, "available": s.available, "restock": s.restock}
+                {
+                    "size": s.size,
+                    "available": s.available,
+                    "restock": s.restock,
+                    "dafy_available": s.dafy_available,
+                }
                 for s in self.sizes
             ],
             "sold_out": self.sold_out,
