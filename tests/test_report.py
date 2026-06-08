@@ -8,71 +8,66 @@ from src.report import build_report_text, split_for_telegram
 
 def _sample_report() -> Report:
     return Report(
-        generated_at=datetime(2026, 6, 6, 8, 0),
+        generated_at=datetime(2026, 6, 8, 8, 0),
         results=[
             ProductResult(
-                url="https://www.dafy-moto.com/a.html",
-                name="Shoei - Casque RF Noir",
-                site="Dafy Moto",
+                url="https://www.motoblouz.com/vente-casque-shoei-nxr2-plain-1.html",
+                name="Casque intégral Shoei NXR2 - PLAIN",
+                site="Motoblouz",
+                brand="Shoei",
+                gamme="NXR2",
+                color="PLAIN",
+                price="479 €",
                 sizes=[
-                    SizeStatus("S", False),
-                    SizeStatus("M", False),
-                    SizeStatus("L", True),
-                    SizeStatus("XL", True),
+                    SizeStatus("2XS", False),
+                    SizeStatus("XS", True),
+                    SizeStatus("S", True),
+                    SizeStatus("M", True),
                 ],
             ),
             ProductResult(
-                url="https://www.dafy-moto.com/b.html",
-                name="Arai - Casque Quantic Blanc",
-                site="Dafy Moto",
+                url="https://www.motoblouz.com/vente-casque-shoei-nxr2-accolade-2.html",
+                name="Casque intégral Shoei NXR2 - ACCOLADE",
+                site="Motoblouz",
+                brand="Shoei",
+                gamme="NXR2",
+                color="ACCOLADE",
                 sizes=[SizeStatus("S", False), SizeStatus("M", False)],
                 sold_out=True,
             ),
             ProductResult(
-                url="https://www.dafy-moto.com/c.html",
-                name="Casque C",
-                site="Dafy Moto",
-                error="TimeoutError: navigation",
+                url="https://www.motoblouz.com/vente-casque-shoei-gtair3-3.html",
+                name="Casque intégral Shoei GT-Air 3",
+                site="Motoblouz",
+                brand="Shoei",
+                gamme="GT-Air 3",
+                color=None,
+                price="599 €",
+                sizes=[SizeStatus("M", True), SizeStatus("L", True)],
             ),
         ],
     )
 
 
-def test_report_groups_by_site_with_alerts():
+def test_header_has_brand_and_counts():
     text = build_report_text(_sample_report())
-    assert "RAPPORT DISPO MOTO" in text
-    # Nom du site présent
-    assert "Dafy Moto" in text
-    # Sections d'alerte
-    assert "RUPTURES TOTALES" in text
-    assert "TAILLES MANQUANTES" in text
-    # Tailles manquantes du modèle partiel
-    assert "❌ <b>S · M</b>" in text
-    # Comptage des erreurs
-    assert "1 erreur(s)" in text
+    assert "DISPO CASQUES SHOEI" in text
+    assert "3 casque(s) surveillé(s)" in text
+    assert "🟢 1 complets · 🟡 1 partiels · 🔴 1 ruptures" in text
 
 
-def test_name_is_cleaned():
+def test_pastilles_per_size():
     text = build_report_text(_sample_report())
-    # « Shoei - Casque RF Noir » → « Shoei RF Noir »
-    assert "Shoei RF Noir" in text
-    assert "Casque RF Noir" not in text
+    assert "🔴2XS 🟢XS 🟢S 🟢M" in text  # NXR2 PLAIN
+    assert "🔴S 🔴M" in text  # ACCOLADE rupture
 
 
-def test_full_available_not_detailed():
-    report = Report(
-        generated_at=datetime(2026, 6, 6, 8, 0),
-        results=[
-            ProductResult(
-                url="https://www.dafy-moto.com/ok.html",
-                name="Tout dispo",
-                site="Dafy Moto",
-                sizes=[SizeStatus("S", True), SizeStatus("M", True)],
-            )
-        ],
-    )
-    text = build_report_text(report)
-    assert "Tout est disponible" in text
+def test_grouped_by_gamme_with_links_and_price():
+    text = build_report_text(_sample_report())
+    assert "━━━ NXR2 ━━━" in text
+    assert "━━━ GT-Air 3 ━━━" in text
+    assert "PLAIN</a> · 479 €" in text
+    assert 'href="https://www.motoblouz.com/vente-casque-shoei-nxr2-plain-1.html"' in text
 
 
 def test_split_for_telegram_respects_limit():

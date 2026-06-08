@@ -21,6 +21,12 @@ class ProductResult:
     url: str
     name: str
     site: str | None = None
+    # Marque (ex: "Shoei").
+    brand: str | None = None
+    # Gamme/modèle (ex: "NXR2", "GT-Air 3") pour regrouper le rapport.
+    gamme: str | None = None
+    # Coloris / déclinaison (ex: "PLAIN", "ACCOLADE").
+    color: str | None = None
     price: str | None = None
     sizes: list[SizeStatus] = field(default_factory=list)
     # True quand le produit entier est en rupture (aucune taille disponible).
@@ -42,6 +48,9 @@ class ProductResult:
             "url": self.url,
             "name": self.name,
             "site": self.site,
+            "brand": self.brand,
+            "gamme": self.gamme,
+            "color": self.color,
             "price": self.price,
             "sizes": [{"size": s.size, "available": s.available} for s in self.sizes],
             "sold_out": self.sold_out,

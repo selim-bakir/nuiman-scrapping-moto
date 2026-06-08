@@ -1,18 +1,12 @@
 # Configuration des éléments surveillés quotidiennement.
 # Le scraper est sélectionné automatiquement selon le domaine de l'URL.
 #
-# ⏳ EN ATTENTE de la liste définitive de Nuiman (sites + types d'accessoires).
-# Ci-dessous : quelques modèles d'exemple pour valider le rendu.
-
-# --- Produits unitaires ---
-# url (requis) · label (option.) · sizes (option., liste blanche de tailles)
-products:
-  - url: https://www.dafy-moto.com/casque-exo-530-air-solid-scorpion-noir-brillant.html
-  - url: https://www.dafy-moto.com/casque-nxr2-shoei-noir-mat.html
-  - url: https://www.dafy-moto.com/casque-gt-air-3-shoei-noir-mat.html
+# Périmètre actuel : casques de la marque SHOEI sur motoblouz.com.
 
 # --- Catégories (listing paginé automatiquement) ---
-# Décommenter pour surveiller une catégorie entière (gros volume).
-# categories:
-#   - https://www.dafy-moto.com/casques.html
-categories: []
+categories:
+  - https://www.motoblouz.com/marque/shoei/casque.html
+
+# --- Produits unitaires (optionnel) ---
+# url (requis) · label (option.) · sizes (option., liste blanche de tailles)
+products: []
