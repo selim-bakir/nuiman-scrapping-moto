@@ -52,10 +52,10 @@ def build_xlsx(report: Report, path: Path) -> Path:
     """Génère un classeur stylé : 1 ligne/casque, photo + 1 colonne/taille (ruptures en tête)."""
     results = sorted(
         report.results,
-        key=lambda r: (_STATUS_RANK.get(_status(r), 9), r.gamme or "", r.color or ""),
+        key=lambda r: (r.gamme or "", r.color or "", _STATUS_RANK.get(_status(r), 9), r.site or ""),
     )
     sizes = _ordered_sizes(report.results)
-    headers = ["Photo", "Gamme", "Coloris", "Prix", "Statut", *sizes, "Fiche"]
+    headers = ["Photo", "Site", "Gamme", "Coloris", "Prix", "Statut", *sizes, "Fiche"]
     ncol = len(headers)
 
     wb = Workbook()
@@ -95,7 +95,7 @@ def build_xlsx(report: Report, path: Path) -> Path:
 
     # Données.
     img_refs = []  # garde les BytesIO vivants jusqu'au save
-    size_base = 6  # 1re colonne de taille
+    size_base = 7  # 1re colonne de taille (après Photo, Site, Gamme, Coloris, Prix, Statut)
     for idx, r in enumerate(results):
         row = hdr + 1 + idx
         ws.row_dimensions[row].height = 58
@@ -104,6 +104,7 @@ def build_xlsx(report: Report, path: Path) -> Path:
 
         values = [
             "",
+            r.site or "",
             r.gamme or "",
             r.color or "",
             r.price or "",
@@ -129,7 +130,7 @@ def build_xlsx(report: Report, path: Path) -> Path:
                 c.fill = zebra
 
         # Statut coloré.
-        ws.cell(row=row, column=5).fill = _STATUS_FILL.get(_status(r), _GREY)
+        ws.cell(row=row, column=6).fill = _STATUS_FILL.get(_status(r), _GREY)
         # Cellules tailles colorées.
         for i, sz in enumerate(sizes):
             cell = ws.cell(row=row, column=size_base + i)
@@ -162,7 +163,7 @@ def build_xlsx(report: Report, path: Path) -> Path:
                 pass
 
     # Largeurs.
-    widths = [12, 13, 22, 9, 10] + [12] * len(sizes) + [8]
+    widths = [12, 12, 13, 22, 9, 10] + [12] * len(sizes) + [8]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
     ws.freeze_panes = f"A{hdr + 1}"

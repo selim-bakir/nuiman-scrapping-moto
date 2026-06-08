@@ -3,9 +3,13 @@
 #
 # Périmètre actuel : casques de la marque SHOEI sur motoblouz.com.
 
-# --- Catégories (listing paginé automatiquement) ---
+# --- Catégories (listing paginé automatiquement), par site ---
 categories:
+  # Motoblouz (tous casques Shoei ; filtrés ensuite par le focus)
   - https://www.motoblouz.com/marque/shoei/casque.html
+  # Motoshopping (GT-Air 3 + J-Cruise 3)
+  - https://www.motoshopping.com/3-casque-moto-integral/gt_air_3
+  - https://www.motoshopping.com/11-casque-moto-jet/casques_shoei
 
 # --- Produits unitaires (optionnel) ---
 # url (requis) · label (option.) · sizes (option., liste blanche de tailles)

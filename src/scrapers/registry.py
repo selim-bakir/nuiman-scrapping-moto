@@ -7,10 +7,12 @@ from urllib.parse import urlparse
 from .base import BaseScraper
 from .dafy import DafyScraper
 from .motoblouz import MotoblouzScraper
+from .motoshopping import MotoshoppingScraper
 
 # Pour ajouter un site : instancier le scraper ici.
 _SCRAPERS: list[BaseScraper] = [
     MotoblouzScraper(),
+    MotoshoppingScraper(),
     DafyScraper(),
 ]
 
