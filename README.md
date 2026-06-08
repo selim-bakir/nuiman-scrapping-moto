@@ -1,20 +1,22 @@
 # nuiman-scrapping-moto
 
-Surveillance quotidienne de la disponibilité des casques et accessoires moto par
-taille, sur différents sites e-commerce. Génère un rapport journalier complet
-(disponible + indisponible par taille) et l'envoie sur Telegram à Nuiman.
+Surveillance quotidienne de la disponibilité des **casques SHOEI** par taille sur
+**motoblouz.com**. Génère un rapport journalier (pastilles 🟢/🔴 par taille,
+organisé par gamme, avec prix et lien fiche) et l'envoie sur Telegram à Nuiman.
 
 ## Fonctionnement
 
-1. Lecture de la liste des produits à surveiller (`config/products.yaml`).
-2. Scraping de chaque page produit avec Playwright (le scraper est choisi
-   automatiquement selon le domaine de l'URL).
-3. Détection de la disponibilité de chaque taille.
-4. Génération d'un rapport texte + sauvegarde JSON dans `reports/`.
-5. Envoi du rapport sur Telegram.
+1. Récupération de tous les casques Shoei du listing Motoblouz (chargement
+   « Voir plus de produits » jusqu'à épuisement).
+2. Pour chaque casque : lecture du payload SSR Nuxt (`#__NUXT_DATA__`) qui contient
+   nom, gamme, coloris, prix et la disponibilité de chaque taille (SKU `forSale`).
+3. Génération d'un rapport texte (pastilles par taille, groupé par gamme) +
+   sauvegarde JSON dans `reports/`.
+4. Envoi du rapport sur Telegram (découpé en plusieurs messages si nécessaire).
 
-Sites supportés actuellement : **Dafy Moto** (`dafy-moto.com`).
-L'architecture est générique : ajouter un site = ajouter un scraper (voir plus bas).
+Architecture **multi-sites générique** : ajouter un site = ajouter un scraper
+(`src/scrapers/<site>.py` + enregistrement dans `registry.py`). Sites supportés :
+**Motoblouz** (`motoblouz.com`), Dafy Moto (`dafy-moto.com`, non utilisé actuellement).
 
 ## Installation
 
@@ -28,24 +30,28 @@ playwright install chromium
 
 ## Configuration
 
-1. Copier `.env.example` vers `.env` et renseigner :
-   - `TELEGRAM_BOT_TOKEN` : token du bot (créé via [@BotFather](https://t.me/BotFather)).
-   - `TELEGRAM_CHAT_ID` : chat ID de Nuiman.
-
-   > Pour obtenir le chat ID : Nuiman démarre une conversation avec le bot, puis
-   > ouvrir `https://api.telegram.org/bot<TOKEN>/getUpdates` et lire `chat.id`.
-
-2. Éditer `config/products.yaml` pour la liste des modèles à surveiller.
+1. Copier `.env.example` vers `.env` et renseigner `TELEGRAM_BOT_TOKEN` et
+   `TELEGRAM_CHAT_ID` (groupe Telegram de destination).
+2. `config/products.yaml` définit le périmètre surveillé (catégories/produits).
+   Par défaut : `https://www.motoblouz.com/marque/shoei/casque.html`.
 
 ## Utilisation
 
 ```bash
-# Test sans envoi Telegram (affiche le rapport dans le terminal)
-python -m src.main --dry-run
-
-# Exécution complète (scrape + envoi Telegram)
-python -m src.main
+python -m src.main --dry-run   # scrape + affiche le rapport (pas d'envoi)
+python -m src.main             # scrape + envoi Telegram
 ```
+
+Variables d'env utiles : `SCRAPE_CONCURRENCY` (défaut 3), `REQUEST_DELAY_MS`
+(défaut 250), `MAX_PRODUCTS` (plafond de test, 0 = illimité).
+
+## Automatisation (GitHub Actions)
+
+`.github/workflows/daily-report.yml` exécute le rapport **tous les jours à 8h**
+(cron `0 6 * * *` UTC), indépendamment de toute machine locale. Les identifiants
+Telegram sont stockés en **GitHub Secrets** (`TELEGRAM_BOT_TOKEN`,
+`TELEGRAM_CHAT_ID`). Le cron ne s'active que lorsque le workflow est sur la
+branche par défaut (`main`).
 
 ## Tests
 
@@ -53,28 +59,21 @@ python -m src.main
 pytest
 ```
 
-## Ajouter un nouveau site
-
-1. Créer `src/scrapers/<site>.py` avec une classe héritant de `BaseScraper`,
-   en définissant `domains` et la méthode `scrape`.
-2. L'enregistrer dans `src/scrapers/registry.py`.
-
-Le reste (config, rapport, Telegram, parallélisme) est mutualisé.
-
 ## Structure
 
 ```
-config/products.yaml   liste des produits surveillés
+config/products.yaml      périmètre surveillé
 src/
-  config.py            chargement env + produits
-  models.py            dataclasses (SizeStatus, ProductResult, Report)
+  config.py               chargement env + produits/catégories
+  models.py               dataclasses (SizeStatus, ProductResult, Report)
   scrapers/
-    base.py            interface BaseScraper
-    dafy.py            scraper Dafy Moto
-    registry.py        sélection du scraper par domaine
-  report.py            génération du texte du rapport
-  telegram.py          envoi Telegram
-  main.py              orchestration (point d'entrée)
-reports/               rapports JSON archivés
+    base.py               interface BaseScraper
+    motoblouz.py          scraper Motoblouz (payload Nuxt, dispo par taille)
+    dafy.py               scraper Dafy Moto
+    registry.py           sélection du scraper par domaine
+  report.py               rapport Telegram (pastilles, groupé par gamme)
+  telegram.py             envoi Telegram
+  main.py                 orchestration (point d'entrée)
+reports/                  rapports JSON archivés
 tests/
 ```

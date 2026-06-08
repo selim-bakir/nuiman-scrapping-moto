@@ -6,10 +6,22 @@ from urllib.parse import urlparse
 
 from .base import BaseScraper
 from .dafy import DafyScraper
+from .icasque import IcasqueScraper
+from .izberg import IzbergScraper
+from .motoblouz import MotoblouzScraper
+from .motoshopping import MotoshoppingScraper
+from .speedway import SpeedwayScraper
 
 # Pour ajouter un site : instancier le scraper ici.
+# (Team Axe écarté : Cloudflare nécessite Firefox + scraping lent ; scraper conservé
+#  dans teamaxe.py mais non branché.)
 _SCRAPERS: list[BaseScraper] = [
+    MotoblouzScraper(),
+    MotoshoppingScraper(),
     DafyScraper(),
+    IcasqueScraper(),
+    SpeedwayScraper(),
+    IzbergScraper(),
 ]
 
 
