@@ -1,0 +1,42 @@
+name: Rapport quotidien dispo moto
+
+on:
+  schedule:
+    # 06:00 UTC = 08:00 Paris (heure d'été) / 07:00 (heure d'hiver).
+    - cron: "0 6 * * *"
+  # Permet de lancer le rapport manuellement depuis l'onglet Actions.
+  workflow_dispatch: {}
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installer les dépendances
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Générer et envoyer le rapport
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SCRAPE_CONCURRENCY: "5"
+          REQUEST_DELAY_MS: "200"
+        run: python -m src.main
+
+      - name: Archiver le rapport JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-json
+          path: reports/*.json
+          if-no-files-found: ignore
+          retention-days: 30

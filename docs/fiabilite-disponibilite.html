@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La vraie disponibilité — Veille Shoei</title>
+<style>
+  :root{
+    --bg:#0d0d0f; --panel:#16161a; --panel2:#1d1d22; --line:#2c2c33;
+    --txt:#eef0f3; --muted:#9aa0aa;
+    --red:#e10600; --orange:#ff7a00; --green:#1fd17a; --blue:#3da5ff;
+  }
+  *{box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  html,body{margin:0;padding:0;background:var(--bg);}
+  body{font-family:"Segoe UI",-apple-system,Roboto,Helvetica,Arial,sans-serif;color:var(--txt);}
+  .page{width:820px;margin:0 auto;background:var(--bg);}
+  /* HEADER */
+  .hero{position:relative;background:
+        linear-gradient(135deg,#1a1a1f 0%,#0d0d0f 60%),
+        repeating-linear-gradient(135deg,#000 0 14px,#141417 14px 28px);
+        padding:34px 36px 30px;border-bottom:3px solid var(--red);overflow:hidden;}
+  .checker{position:absolute;top:0;right:0;width:160px;height:100%;opacity:.10;
+        background:repeating-conic-gradient(#fff 0% 25%, #000 0% 50%) 0 0/22px 22px;}
+  .kicker{display:inline-block;background:var(--red);color:#fff;font-weight:800;
+        letter-spacing:2px;font-size:11px;padding:4px 10px;border-radius:3px;text-transform:uppercase;}
+  .hero h1{margin:14px 0 4px;font-size:34px;font-weight:900;letter-spacing:-.5px;line-height:1.05;}
+  .hero h1 span{color:var(--red);}
+  .hero .sub{color:var(--muted);font-size:14px;margin:0;}
+  .wrap{padding:26px 36px 40px;}
+  .lead{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--orange);
+        border-radius:10px;padding:16px 18px;font-size:14.5px;color:#d9dde3;}
+  .lead b{color:#fff;}
+  /* LEVELS */
+  .levels{display:flex;gap:12px;margin:22px 0;}
+  .lvl{flex:1;border-radius:12px;padding:16px;border:1px solid var(--line);background:var(--panel2);}
+  .lvl .badge{display:inline-block;font-weight:900;font-size:12px;letter-spacing:1px;
+        padding:4px 10px;border-radius:20px;color:#0d0d0f;}
+  .g .badge{background:var(--green);} .o .badge{background:var(--orange);} .r .badge{background:var(--red);color:#fff;}
+  .lvl h3{margin:10px 0 5px;font-size:15px;}
+  .lvl p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.45;}
+  .g{border-top:3px solid var(--green);} .o{border-top:3px solid var(--orange);} .r{border-top:3px solid var(--red);}
+  .rule{font-size:15px;margin:6px 0 0;}
+  .rule b{color:var(--green);}
+  /* BOXES */
+  .box{border-radius:10px;padding:15px 18px;margin:20px 0;font-size:14px;line-height:1.5;}
+  .box.find{background:rgba(225,6,0,.10);border:1px solid rgba(225,6,0,.4);}
+  .box.note{background:rgba(255,122,0,.09);border:1px solid rgba(255,122,0,.35);}
+  .box b{color:#fff;}
+  .big{font-size:22px;font-weight:900;color:var(--orange);}
+  h2{font-size:18px;margin:26px 0 10px;display:flex;align-items:center;gap:8px;}
+  h2::before{content:"";width:14px;height:14px;background:var(--red);transform:skewX(-12deg);display:inline-block;}
+  /* TABLE */
+  table{width:100%;border-collapse:collapse;font-size:13.5px;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  th{background:#000;color:#fff;text-align:left;padding:10px 12px;font-size:12px;letter-spacing:.5px;text-transform:uppercase;}
+  td{padding:10px 12px;border-top:1px solid var(--line);color:#d9dde3;}
+  tr:nth-child(even) td{background:var(--panel);}
+  .oui{color:var(--green);font-weight:800;}
+  .non{color:#ff6b66;font-weight:800;}
+  .cap{font-size:12px;color:var(--muted);margin:8px 2px 0;}
+  footer{border-top:1px solid var(--line);margin-top:30px;padding-top:14px;
+        color:var(--muted);font-size:12px;display:flex;justify-content:space-between;}
+  footer b{color:var(--red);}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="hero">
+    <div class="checker"></div>
+    <span class="kicker">🏁 Veille disponibilité · Shoei</span>
+    <h1>LA VRAIE <span>DISPONIBILITÉ</span><br>DES CASQUES</h1>
+    <p class="sub">GT-Air 3 &amp; J-Cruise 3 — comment on lit le stock, site par site</p>
+  </div>
+
+  <div class="wrap">
+    <div class="lead">
+      Objectif : savoir si une taille est <b>vraiment en stock</b> (livrable tout de suite) — ou pas.<br>
+      Le piège : certains sites ne disent jamais « indisponible ». Ils affichent juste une
+      <b>date de livraison plus lointaine</b>, alors que techniquement ils n'ont pas le produit.
+      D'où <b>3 niveaux</b> :
+    </div>
+
+    <div class="levels">
+      <div class="lvl g"><span class="badge">🟢 EN STOCK</span>
+        <h3>Vrai stock</h3><p>Casque physiquement dispo, expédié sous 24–48 h.</p></div>
+      <div class="lvl o"><span class="badge">🟠 PLUS TARD</span>
+        <h3>Pas en stock</h3><p>Commande acceptée mais livraison repoussée. On affiche la date annoncée.</p></div>
+      <div class="lvl r"><span class="badge">🔴 RUPTURE</span>
+        <h3>Indisponible</h3><p>Pas en stock, aucune date.</p></div>
+    </div>
+
+    <p class="rule">Dans le rapport quotidien, on ne compte « disponible » que le <b>🟢 vrai stock</b>.
+       Le 🟠 et le 🔴 sont signalés comme alertes (avec la date si le site la donne).</p>
+
+    <div class="box find">
+      🏍️ <b>Preuve concrète — Motoblouz.</b> « Achetable » ≠ « en stock ». Sur les tailles que
+      l'ancienne version comptait disponibles, seules <span class="big">21</span> étaient vraiment en stock —
+      <span class="big">40</span> autres étaient en réalité « livrables plus tard » (35 délai court, 5 délai long).
+      <b>Corrigé : seul le vrai stock compte désormais comme 🟢.</b>
+    </div>
+
+    <h2>Comment chaque site indique le stock</h2>
+    <table>
+      <tr><th>Site</th><th>Ce qu'on lit</th><th>Distingue « plus tard »</th><th>Date donnée</th></tr>
+      <tr><td><b>Motoblouz</b></td><td>Stock réel par entrepôt</td><td class="oui">Oui</td><td class="oui">Oui, précise</td></tr>
+      <tr><td><b>Motoshopping</b></td><td>Quantité + statut</td><td class="oui">Oui</td><td class="oui">Oui (souvent)</td></tr>
+      <tr><td><b>Speedway</b></td><td>Quantité réelle entrepôt</td><td class="oui">Oui</td><td class="non">Non</td></tr>
+      <tr><td><b>iCasque</b></td><td>Statut stock / rupture</td><td class="oui">Oui</td><td class="oui">Oui (fourchette)</td></tr>
+      <tr><td><b>Dafy</b></td><td>Marqueur « indisponible »</td><td class="non">Non</td><td class="non">Non</td></tr>
+      <tr><td><b>Moto Axxe / Maxxess</b></td><td>Taille retirée si rupture</td><td class="non">Non</td><td class="non">Non</td></tr>
+    </table>
+    <p class="cap">Dafy, Moto Axxe et Maxxess ne séparent pas « plus tard » et « rupture » :
+       on a alors seulement 🟢 en stock vs 🔴 pas en stock.</p>
+
+    <div class="box note">
+      🕵️ <b>L'exemple Speedway (le coup des « malinois »).</b> Quand on dit « pas en stock »,
+      Speedway affiche quand même « commander » : c'est une <b>précommande</b>. La quantité réelle
+      est à zéro (ou négative), livraison repoussée bien au-delà des 24–48 h. On a donc raison de
+      ne pas le compter comme disponible.
+    </div>
+
+    <div class="box note" style="border-color:var(--green);background:rgba(31,209,122,.08);">
+      ✅ <b>En une phrase :</b> quand le rapport dit <b style="color:var(--green)">EN STOCK</b>,
+      c'est du vrai stock immédiat. Tout le reste (livrable plus tard ou rupture) est signalé —
+      avec la date annoncée quand le site la communique.
+    </div>
+
+    <footer>
+      <span>🪖 Veille disponibilité <b>Shoei</b> — document de cadrage</span>
+      <span>Pour Nuiman</span>
+    </footer>
+  </div>
+</div>
+</body>
+</html>

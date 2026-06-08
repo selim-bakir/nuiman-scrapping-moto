@@ -1,13 +1,46 @@
-# Liste des produits à surveiller quotidiennement.
+# Configuration des éléments surveillés quotidiennement.
 # Le scraper est sélectionné automatiquement selon le domaine de l'URL.
 #
-# Champs par produit :
-#   url    (requis)  : URL de la page produit
-#   label  (option.) : nom affiché dans le rapport (sinon récupéré depuis la page)
-#   sizes  (option.) : liste blanche des tailles à surveiller. Si absent, toutes
-#                      les tailles trouvées sur la page sont rapportées.
+# Périmètre actuel : casques de la marque SHOEI sur motoblouz.com.
 
-products:
-  - url: https://www.dafy-moto.com/casque-exo-530-air-solid-scorpion-noir-brillant.html
-  - url: https://www.dafy-moto.com/casque-nxr2-shoei-noir-mat.html
-  - url: https://www.dafy-moto.com/casque-gt-air-3-shoei-noir-mat.html
+# --- Catégories (listing paginé automatiquement), par site ---
+categories:
+  # Motoblouz (tous casques Shoei ; filtrés ensuite par le focus)
+  - https://www.motoblouz.com/marque/shoei/casque.html
+  # Motoshopping (GT-Air 3 + J-Cruise 3)
+  - https://www.motoshopping.com/3-casque-moto-integral/gt_air_3
+  - https://www.motoshopping.com/11-casque-moto-jet/casques_shoei
+  # Dafy Moto (casques Shoei ; filtrés ensuite par le focus)
+  - https://www.dafy-moto.com/marque/shoei/casque-integral.html
+  # iCasque (GT-Air 3 + J-Cruise 3)
+  - https://www.icasque.com/shoei-gt-air/
+  - https://www.icasque.com/Casque-moto/shoei-j-cruise-3/
+  # Speedway (GT-Air 3 + J-Cruise 3)
+  - https://www.speedway.fr/shoei-gt-air-3
+  - https://www.speedway.fr/shoei-j-cruise-3
+  # Moto Axxe (Izberg)
+  - https://www.moto-axxe.fr/categorie/casque-integral-16/SHOEI
+  - https://www.moto-axxe.fr/categorie/casque-jet-18/SHOEI
+  # Maxxess (Izberg)
+  - https://www.maxxess.fr/categorie/casque-integral-16/SHOEI
+  - https://www.maxxess.fr/categorie/casque-jet-18/SHOEI
+
+# --- Produits unitaires (optionnel) ---
+# url (requis) · label (option.) · sizes (option., liste blanche de tailles)
+products: []
+
+# --- Croisement / double-check (Dafy) --- DÉSACTIVÉ (on se base sur Motoblouz seul)
+cross_check: []
+
+# --- Focus : restreindre aux modèles + coloris suivis ---
+# On ne garde que ces gammes, en coloris UNIS parmi la liste de couleurs.
+focus:
+  gammes:
+    - GT-AIR 3
+    - J-CRUISE 3
+  colors:        # couleurs de base des coloris unis suivis (Blanc, Noir mat/brillant, Gris, Bleu)
+    - blanc
+    - noir
+    - gris
+    - bleu
+  unis_only: true

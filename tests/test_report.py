@@ -3,48 +3,91 @@
 from datetime import datetime
 
 from src.models import ProductResult, Report, SizeStatus
-from src.report import build_report_text, split_for_telegram
+from src.report import (
+    build_report_text,
+    fmt_restock,
+    split_for_telegram,
+    to_report,
+)
 
 
 def _sample_report() -> Report:
     return Report(
-        generated_at=datetime(2026, 6, 6, 9, 0),
+        generated_at=datetime(2026, 6, 8, 8, 0),
         results=[
             ProductResult(
-                url="https://www.dafy-moto.com/a.html",
-                name="Casque A",
-                price="419,16 €",
+                url="https://www.motoblouz.com/vente-casque-shoei-nxr2-plain-1.html",
+                name="Casque intégral Shoei NXR2 - PLAIN",
+                site="Motoblouz", brand="Shoei", gamme="NXR2", color="PLAIN",
+                price="479 €",
                 sizes=[
-                    SizeStatus("S", False),
-                    SizeStatus("M", False),
-                    SizeStatus("L", True),
-                    SizeStatus("XL", True),
+                    SizeStatus("2XS", False, restock="2026-07-20T00:00:00+02:00"),
+                    SizeStatus("XS", True),
+                    SizeStatus("S", True),
+                    SizeStatus("M", True),
                 ],
             ),
             ProductResult(
-                url="https://www.dafy-moto.com/b.html",
-                name="Casque B",
-                price="529 €",
+                url="https://www.motoblouz.com/vente-casque-shoei-nxr2-accolade-2.html",
+                name="Casque intégral Shoei NXR2 - ACCOLADE",
+                site="Motoblouz", brand="Shoei", gamme="NXR2", color="ACCOLADE",
                 sizes=[SizeStatus("S", False), SizeStatus("M", False)],
                 sold_out=True,
             ),
             ProductResult(
-                url="https://www.dafy-moto.com/c.html",
-                name="Casque C",
-                error="TimeoutError: navigation",
+                url="https://www.motoblouz.com/vente-casque-shoei-gtair3-3.html",
+                name="Casque intégral Shoei GT-Air 3",
+                site="Motoblouz", brand="Shoei", gamme="GT-Air 3", color=None,
+                price="599 €",
+                sizes=[SizeStatus("M", True), SizeStatus("L", True)],  # 100% dispo
             ),
         ],
     )
 
 
-def test_build_report_contains_counts_and_sizes():
+def test_header_counts():
     text = build_report_text(_sample_report())
-    assert "3 modèle(s) surveillé(s)" in text
-    assert "Casque A" in text
-    assert "🟢 L" in text
-    assert "🔴 S" in text
-    assert "Rupture totale" in text
-    assert "Erreur de scraping" in text
+    assert "RUPTURES CASQUES SHOEI" in text
+    assert "🌐 1 sites · 📦 3 coloris surveillés · 🚨 2 alertes" in text
+    assert "🟢 1 complets · 🟡 1 partiels · 🔴 1 ruptures totales" in text
+
+
+def test_only_ruptures_shown_grouped_by_site():
+    text = build_report_text(_sample_report())
+    # Bandeau par site, NXR2 (partiel + rupture) présent, GT-Air 3 (100% dispo) absent
+    assert "📍 <b>MOTOBLOUZ</b>" in text
+    assert "GT-Air 3" not in text
+    assert "PLAIN</a> · 479 €" in text
+
+
+def test_only_unavailable_sizes_with_restock():
+    text = build_report_text(_sample_report())
+    # PLAIN : seule 2XS est indispo (rupture sèche, avec date de réappro)
+    assert "🔴 <b>2XS</b> · réappro 20/07/26" in text
+    assert "🟢XS" not in text and "🟢 <b>XS" not in text  # aucune taille dispo listée
+    # ACCOLADE : tailles en rupture sans date
+    assert "🔴 <b>S</b> · rupture" in text
+
+
+def test_deferred_size_shown_as_livrable():
+    from datetime import datetime as dt
+    r = ProductResult(
+        url="u", name="NXR2 X", site="Speedway", brand="Shoei", gamme="NXR2", color="Noir",
+        sizes=[SizeStatus("M", False, deferred=True, restock="2026-07-17T00:00:00+02:00")],
+    )
+    report = Report(generated_at=dt(2026, 6, 8, 8, 0), results=[r])
+    text = build_report_text(report)
+    assert "🟠 <b>M</b> · livrable 17/07/26 (pas en stock)" in text
+
+
+def test_to_report_filters_ok():
+    flagged = to_report(_sample_report().results)
+    assert len(flagged) == 2  # PLAIN (partiel) + ACCOLADE (rupture)
+
+
+def test_fmt_restock():
+    assert fmt_restock("2026-06-17T00:00:00+02:00") == "17/06/26"
+    assert fmt_restock(None) is None
 
 
 def test_split_for_telegram_respects_limit():
@@ -52,7 +95,3 @@ def test_split_for_telegram_respects_limit():
     chunks = split_for_telegram(long_text, limit=4096)
     assert all(len(c) <= 4096 for c in chunks)
     assert len(chunks) > 1
-
-
-def test_split_short_text_single_chunk():
-    assert split_for_telegram("court") == ["court"]

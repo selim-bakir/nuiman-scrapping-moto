@@ -11,7 +11,22 @@ class SizeStatus:
     """Disponibilité d'une taille donnée pour un produit."""
 
     size: str
+    # available=True => EN STOCK réel (expédition immédiate).
     available: bool
+    # deferred=True (et available=False) => "livrable plus tard" : le site accepte
+    # la commande mais ce n'est PAS du stock (rupture déguisée). Sinon => rupture sèche.
+    deferred: bool = False
+    # Date de réappro / livraison annoncée (ISO) si connue, sinon None.
+    restock: str | None = None
+    # Croisement Dafy : True=dispo sur Dafy, False=indispo sur Dafy, None=non trouvé.
+    dafy_available: bool | None = None
+
+    @property
+    def level(self) -> str:
+        """'stock' | 'deferred' (livrable plus tard) | 'out' (rupture)."""
+        if self.available:
+            return "stock"
+        return "deferred" if self.deferred else "out"
 
 
 @dataclass
@@ -20,7 +35,16 @@ class ProductResult:
 
     url: str
     name: str
+    site: str | None = None
+    # Marque (ex: "Shoei").
+    brand: str | None = None
+    # Gamme/modèle (ex: "NXR2", "GT-Air 3") pour regrouper le rapport.
+    gamme: str | None = None
+    # Coloris / déclinaison (ex: "PLAIN", "ACCOLADE").
+    color: str | None = None
     price: str | None = None
+    # URL de la photo principale du casque.
+    image: str | None = None
     sizes: list[SizeStatus] = field(default_factory=list)
     # True quand le produit entier est en rupture (aucune taille disponible).
     sold_out: bool = False
@@ -40,8 +64,23 @@ class ProductResult:
         return {
             "url": self.url,
             "name": self.name,
+            "site": self.site,
+            "brand": self.brand,
+            "gamme": self.gamme,
+            "color": self.color,
             "price": self.price,
-            "sizes": [{"size": s.size, "available": s.available} for s in self.sizes],
+            "image": self.image,
+            "sizes": [
+                {
+                    "size": s.size,
+                    "available": s.available,
+                    "deferred": s.deferred,
+                    "level": s.level,
+                    "restock": s.restock,
+                    "dafy_available": s.dafy_available,
+                }
+                for s in self.sizes
+            ],
             "sold_out": self.sold_out,
             "error": self.error,
             "scraped_at": self.scraped_at.isoformat() if self.scraped_at else None,
