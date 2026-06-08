@@ -20,3 +20,4 @@ reports/*.txt
 # Playwright
 playwright-report/
 reports/*.xlsx
+docs/*.pdf
