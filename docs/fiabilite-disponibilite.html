@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comment on lit la disponibilité — par site</title>
+<style>
+  :root { --vert:#1e9e57; --rouge:#d23b3b; --orange:#e08a00; --bleu:#2e5496; --gris:#f4f6fa; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color:#222; line-height:1.55; margin:0; background:#fff; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 24px 60px; }
+  h1 { font-size: 26px; margin:0 0 4px; }
+  .sub { color:#666; margin:0 0 24px; }
+  .intro { background:var(--gris); border-radius:12px; padding:18px 20px; margin-bottom:28px; }
+  .intro b { color:var(--bleu); }
+  .legend { display:flex; gap:18px; flex-wrap:wrap; margin:14px 0 0; font-size:14px; }
+  .pill { display:inline-flex; align-items:center; gap:6px; }
+  .dot { width:12px; height:12px; border-radius:50%; display:inline-block; }
+  .g{background:var(--vert)} .r{background:var(--rouge)} .o{background:var(--orange)}
+  .card { border:1px solid #e6e9ef; border-radius:12px; padding:18px 20px; margin-bottom:16px; }
+  .card h2 { margin:0 0 2px; font-size:19px; display:flex; align-items:center; gap:10px; }
+  .tag { font-size:12px; font-weight:700; padding:3px 9px; border-radius:20px; color:#fff; }
+  .tag.fiable{ background:var(--vert); }
+  .tag.nuance{ background:var(--orange); }
+  .card p { margin:8px 0 0; }
+  .row { margin-top:8px; }
+  .row b { display:inline-block; min-width:130px; }
+  .date-oui { color:var(--vert); font-weight:600; }
+  .date-non { color:#999; font-weight:600; }
+  .key { background:#fff7e6; border-left:4px solid var(--orange); padding:14px 16px; border-radius:8px; margin:26px 0; }
+  footer { color:#888; font-size:13px; margin-top:30px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🪖 Comment on lit la disponibilité des casques</h1>
+  <p class="sub">Explication simple, site par site — projet de veille Shoei (GT-Air 3 &amp; J-Cruise 3)</p>
+
+  <div class="intro">
+    Dans le rapport quotidien, chaque taille est marquée <b style="color:var(--vert)">disponible</b>
+    ou <b style="color:var(--rouge)">indisponible</b>. La règle est la même partout :
+    <br><br>
+    ✅ <b>« Disponible »</b> = le casque est <b>réellement en stock</b> et expédié rapidement.<br>
+    🔴 <b>« Indisponible »</b> = il n'est <b>pas en stock maintenant</b>.
+    Sur certains sites on peut quand même le <b>commander</b> (précommande / « backorder »),
+    mais la livraison sera bien plus lointaine — donc on le compte comme <b>indisponible</b>,
+    car ce n'est pas du stock réel.
+    <div class="legend">
+      <span class="pill"><span class="dot g"></span> En stock (expédition rapide)</span>
+      <span class="pill"><span class="dot o"></span> Réappro avec date connue</span>
+      <span class="pill"><span class="dot r"></span> Indisponible / pas en stock</span>
+    </div>
+  </div>
+
+  <div class="key">
+    <b>L'exemple Speedway (ta question)</b> : si le rapport dit qu'une taille est <b>indisponible</b>,
+    le site Speedway peut quand même afficher un bouton « commander ». Mais c'est une
+    <b>précommande</b> : la quantité réelle est à zéro (voire négative), et la livraison serait
+    repoussée bien plus loin que les 24–48 h d'un produit en stock. On a donc raison de la
+    classer <b>indisponible</b> — c'est bien une rupture, pas du stock.
+  </div>
+
+  <div class="card">
+    <h2>🟦 Motoblouz <span class="tag fiable">Fiable</span></h2>
+    <p>Le site indique précisément si chaque taille est <b>vendable en stock</b>.</p>
+    <div class="row"><b>Disponible =</b> en stock, achetable tout de suite.</div>
+    <div class="row"><b>Indisponible =</b> en rupture, avec la <b>date de réappro</b> prévue par entrepôt.</div>
+    <div class="row"><b>Date de réappro :</b> <span class="date-oui">OUI, précise</span></div>
+  </div>
+
+  <div class="card">
+    <h2>🟩 Motoshopping <span class="tag fiable">Fiable</span></h2>
+    <p>On lit la <b>quantité en stock</b> réelle de chaque taille.</p>
+    <div class="row"><b>Disponible =</b> quantité en stock &gt; 0.</div>
+    <div class="row"><b>Indisponible =</b> stock à zéro / en rupture, souvent avec une date de réassort.</div>
+    <div class="row"><b>Date de réappro :</b> <span class="date-oui">OUI (souvent)</span></div>
+  </div>
+
+  <div class="card">
+    <h2>🟧 Speedway <span class="tag nuance">Fiable — à expliquer</span></h2>
+    <p>On lit la <b>quantité réelle</b> en entrepôt.</p>
+    <div class="row"><b>Disponible =</b> quantité &gt; 0 → expédition rapide (24–48 h).</div>
+    <div class="row"><b>Indisponible =</b> quantité à 0 ou négative. Le site autorise la
+       <b>précommande</b>, mais l'expédition est lointaine → on compte « indisponible ».</div>
+    <div class="row"><b>Date de réappro :</b> <span class="date-non">NON communiquée</span> par le site.</div>
+  </div>
+
+  <div class="card">
+    <h2>🟦 iCasque <span class="tag fiable">Fiable</span></h2>
+    <p>Le site donne un statut clair par taille.</p>
+    <div class="row"><b>Disponible =</b> statut « en stock ».</div>
+    <div class="row"><b>Indisponible =</b> rupture, avec une <b>fourchette de réappro</b>
+       (ex. « expédition prévue entre le 13 et le 17 août »).</div>
+    <div class="row"><b>Date de réappro :</b> <span class="date-oui">OUI (fourchette)</span></div>
+  </div>
+
+  <div class="card">
+    <h2>🟥 Dafy Moto <span class="tag fiable">Fiable</span></h2>
+    <p>Le site marque simplement chaque taille en rupture pour le coloris.</p>
+    <div class="row"><b>Disponible =</b> la taille n'est pas marquée « indisponible dans ce coloris ».</div>
+    <div class="row"><b>Indisponible =</b> marquée indisponible.</div>
+    <div class="row"><b>Date de réappro :</b> <span class="date-non">NON</span></div>
+  </div>
+
+  <div class="card">
+    <h2>🟫 Moto Axxe &amp; Maxxess <span class="tag fiable">Fiable</span></h2>
+    <p>Mêmes magasins (même technologie). Le site <b>retire</b> la taille quand elle est en rupture.</p>
+    <div class="row"><b>Disponible =</b> la taille est proposée à l'achat.</div>
+    <div class="row"><b>Indisponible =</b> la taille n'apparaît pas (donc en rupture).</div>
+    <div class="row"><b>Date de réappro :</b> <span class="date-non">NON</span></div>
+  </div>
+
+  <div class="key">
+    <b>En résumé</b> — quand le rapport dit <b>« disponible »</b>, le casque est vraiment en stock,
+    quel que soit le site. Quand il dit <b>« indisponible »</b>, il n'est pas en stock immédiat
+    (même si quelques sites acceptent une précommande à délai long). Quand le site nous donne la
+    date de réappro, on l'affiche ; sinon on écrit « réappro non communiquée ».
+  </div>
+
+  <footer>Veille disponibilité Shoei — rapport généré pour Nuiman</footer>
+</div>
+</body>
+</html>
