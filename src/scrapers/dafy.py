@@ -10,6 +10,7 @@ Logique de disponibilité observée sur le site :
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
 from playwright.async_api import Page
@@ -135,6 +136,22 @@ def _drop_generic_urls(urls: list[str]) -> list[str]:
     return keep
 
 
+_KNOWN_GAMMES = ["GT-AIR 3", "J-CRUISE 3", "GT-AIR3", "J-CRUISE3"]
+
+
+def _split_gamme_color(name: str) -> tuple[str | None, str | None]:
+    """'Shoei - Casque GT-Air 3 Noir Mat' -> ('GT-AIR 3', 'Noir mat')."""
+    cleaned = re.sub(r"(?i)shoei\s*-\s*casque\s*", "", name or "").strip()
+    up = cleaned.upper()
+    for g in _KNOWN_GAMMES:
+        i = up.find(g)
+        if i >= 0:
+            gamme = "GT-AIR 3" if "GT-AIR" in g else "J-CRUISE 3"
+            rest = cleaned[i + len(g):].strip(" -·")
+            return gamme, (rest.title() if rest else None)
+    return None, None
+
+
 class DafyScraper(BaseScraper):
     domains = ("dafy-moto.com",)
     site_name = "Dafy Moto"
@@ -177,12 +194,16 @@ class DafyScraper(BaseScraper):
             sizes = [s for s in sizes if s.size.upper() in wanted]
 
         sold_out = data["soldOut"] or (bool(sizes) and not any(s.available for s in sizes))
+        gamme, color = _split_gamme_color(data["name"] or "")
 
         return [
             ProductResult(
                 url=product.url,
                 name=product.label or data["name"] or product.url,
                 site=self.site_name,
+                brand="Shoei",
+                gamme=gamme,
+                color=color,
                 price=data["price"],
                 sizes=sizes,
                 sold_out=sold_out,
