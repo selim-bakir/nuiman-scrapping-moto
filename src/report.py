@@ -104,7 +104,9 @@ def build_header_text(report: Report) -> str:
     )
     if confirmed or elsewhere:
         lines.append(f"🔁 Dafy : 🟥 {confirmed} ruptures confirmées · ✅ {elsewhere} dispo ailleurs")
-    lines.append("<i>🔴 indispo · réappro = réassort prévu · ✅/🟥 = croisement Dafy</i>")
+        lines.append("<i>🔴 indispo · réappro = réassort prévu · ✅/🟥 = croisement Dafy</i>")
+    else:
+        lines.append("<i>🔴 = taille indispo · réappro = réassort prévu</i>")
     return "\n".join(lines)
 
 

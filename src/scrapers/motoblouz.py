@@ -12,6 +12,7 @@ décode, ce qui est rapide et fiable (pas d'attente d'hydratation).
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 
 from playwright.async_api import Page
@@ -174,22 +175,42 @@ def parse_product(nuxt_data_text: str, fallback_url: str) -> dict:
                 if pp is not None:
                     public_val = pp if public_val is None else min(public_val, pp)
 
-    # Coloris affiché = finition/série + couleurs réelles, pour distinguer les
-    # déclinaisons qui partagent le même nom (ex: "MIKE Blanc/Noir" ≠ "MIKE Gris/Vert").
+    # Photo principale + chemin brut (pour déduire la finition mat/brillant).
+    image = None
+    raw_fp = ""
+    for pic in prod.get("pictures") or []:
+        if isinstance(pic, dict) and isinstance(pic.get("url"), str):
+            image = IMG_CDN + pic["url"]
+            raw_fp = pic["url"].lower()
+            break
+
+    # Finition mat/brillant/satin déduite du nom de fichier image ET du slug URL
+    # (Motoblouz ne distingue pas "Noir mat" de "Noir brillant" dans la couleur).
+    hay = f"{raw_fp} {fallback_url.lower()}"
+    finish = ""
+    if re.search(r"\bmat\b|-mat|mat[._-]", hay):
+        finish = "mat"
+    elif "brillant" in hay or "brill" in hay:
+        finish = "brillant"
+    elif "satin" in hay:
+        finish = "satin"
+
+    # Coloris affiché = finition/série + couleurs réelles (+ mat/brillant pour les unis).
     colors_str = "/".join(colors_seen[:3]) if colors_seen else None
     if finition and colors_str:
         color = f"{finition} · {colors_str}"
     elif finition:
         color = finition
+    elif colors_str:
+        if finish:
+            color = f"{colors_str} {finish}"
+        elif colors_str.lower() == "noir":
+            # Noir sans "matte" = Noir brillant (le verni est la finition par défaut Shoei).
+            color = "Noir brillant"
+        else:
+            color = colors_str
     else:
-        color = colors_str
-
-    # Photo principale : 1re image disponible du produit.
-    image = None
-    for pic in prod.get("pictures") or []:
-        if isinstance(pic, dict) and isinstance(pic.get("url"), str):
-            image = IMG_CDN + pic["url"]
-            break
+        color = None
 
     return {
         "name": display,

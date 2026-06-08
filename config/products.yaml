@@ -11,8 +11,18 @@ categories:
 # url (requis) · label (option.) · sizes (option., liste blanche de tailles)
 products: []
 
-# --- Croisement / double-check (Dafy) ---
-# Catégories Dafy scrapées pour confirmer les ruptures Motoblouz par recoupement.
-cross_check:
-  - https://www.dafy-moto.com/marque/shoei/casque-integral.html
-  - https://www.dafy-moto.com/marque/shoei/casque-jet.html
+# --- Croisement / double-check (Dafy) --- DÉSACTIVÉ (on se base sur Motoblouz seul)
+cross_check: []
+
+# --- Focus : restreindre aux modèles + coloris suivis ---
+# On ne garde que ces gammes, en coloris UNIS parmi la liste de couleurs.
+focus:
+  gammes:
+    - GT-AIR 3
+    - J-CRUISE 3
+  colors:        # couleurs de base des coloris unis suivis (Blanc, Noir mat/brillant, Gris, Bleu)
+    - blanc
+    - noir
+    - gris
+    - bleu
+  unis_only: true

@@ -33,6 +33,10 @@ class Settings:
     categories: list[str]
     # Catégories de contrôle (Dafy) pour croiser la disponibilité.
     cross_check: list[str]
+    # Filtre focus : gammes suivies, couleurs unies suivies, unis seulement.
+    focus_gammes: list[str]
+    focus_colors: list[str]
+    focus_unis_only: bool
     # Plafond de sécurité du nombre de produits scrapés (0 = illimité).
     max_products: int
 
@@ -83,5 +87,8 @@ def load_settings(products_path: Path | None = None) -> Settings:
             for e in (data.get("cross_check", []) or [])
             if isinstance(e, str) and e.strip()
         ],
+        focus_gammes=[str(g).strip() for g in ((data.get("focus") or {}).get("gammes") or [])],
+        focus_colors=[str(c).strip().lower() for c in ((data.get("focus") or {}).get("colors") or [])],
+        focus_unis_only=bool((data.get("focus") or {}).get("unis_only", False)),
         max_products=int(os.getenv("MAX_PRODUCTS", "0")),
     )

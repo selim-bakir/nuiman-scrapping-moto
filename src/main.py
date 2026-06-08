@@ -17,6 +17,7 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 
 import os
+import re
 import time
 
 from .config import ProductConfig, Settings, load_settings
@@ -160,6 +161,8 @@ async def run_scraping(settings: Settings) -> Report:
                 )
 
         results = _dedupe_results(list(await asyncio.gather(*(_guarded(p) for p in products))))
+        results = _apply_focus(results, settings)
+        print(f"→ {len(results)} casque(s) après filtre focus")
 
         # Double-check : scraping des sources de contrôle (Dafy) + croisement.
         if settings.cross_check:
@@ -176,6 +179,37 @@ async def run_scraping(settings: Settings) -> Report:
         await browser.close()
 
     return Report(generated_at=datetime.now(), results=results)
+
+
+def _apply_focus(results: list[ProductResult], settings: Settings) -> list[ProductResult]:
+    """Ne garde que les gammes + coloris unis suivis (filtre 'focus' de la config)."""
+    if not settings.focus_gammes:
+        return results
+
+    def norm(s: str | None) -> str:
+        return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
+    base_colors = {
+        "noir", "blanc", "gris", "bleu", "rouge", "vert", "jaune", "orange",
+        "argent", "anthracite", "rose", "violet", "beige", "marron", "carbone",
+        "chrome", "titane", "bronze", "kaki", "bordeaux", "turquoise",
+    }
+    gset = {norm(g) for g in settings.focus_gammes}
+    cset = set(settings.focus_colors)
+    out = []
+    for r in results:
+        if norm(r.gamme) not in gset:
+            continue
+        if settings.focus_unis_only and " · " in (r.color or ""):
+            continue  # exclut les graphiques/séries
+        if cset:
+            ctoks = set(re.findall(r"[a-zàâéèêëîïôûùç]+", (r.color or "").lower()))
+            base = ctoks & base_colors
+            # Uni = exactement une couleur de base, et elle doit être suivie.
+            if len(base) != 1 or not (base <= cset):
+                continue
+        out.append(r)
+    return out
 
 
 def _dedupe_results(results: list[ProductResult]) -> list[ProductResult]:
