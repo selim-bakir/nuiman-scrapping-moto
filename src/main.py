@@ -27,8 +27,9 @@ from .models import ProductResult, Report
 from .report import (
     build_header_text,
     build_report_text,
-    iter_sections,
+    iter_by_site,
     photo_caption,
+    site_banner,
     split_for_telegram,
     to_report,
 )
@@ -180,7 +181,36 @@ async def run_scraping(settings: Settings) -> Report:
         await context.close()
         await browser.close()
 
-    return Report(generated_at=datetime.now(), results=results)
+    return Report(generated_at=datetime.now(), results=_share_images(results))
+
+
+_BASE_COLORS = ("noir", "blanc", "gris", "bleu", "rouge", "vert", "jaune", "orange")
+
+
+def _image_key(gamme: str | None, color: str | None):
+    """Clé (gamme, couleur de base, mat?) pour partager une photo entre sites."""
+    g = re.sub(r"[^a-z0-9]", "", (gamme or "").lower())
+    cl = (color or "").lower()
+    base = next((c for c in _BASE_COLORS if c in cl), None)
+    if not g or not base:
+        return None
+    return (g, base, "mat" in cl)
+
+
+def _share_images(results: list[ProductResult]) -> list[ProductResult]:
+    """Réutilise les photos Motoblouz pour les casques équivalents des autres sites."""
+    bank: dict = {}
+    for r in results:
+        if r.image:
+            k = _image_key(r.gamme, r.color)
+            if k and k not in bank:
+                bank[k] = r.image
+    for r in results:
+        if not r.image:
+            k = _image_key(r.gamme, r.color)
+            if k and k in bank:
+                r.image = bank[k]
+    return results
 
 
 def _apply_focus(results: list[ProductResult], settings: Settings) -> list[ProductResult]:
@@ -262,8 +292,8 @@ def _send_photo_report(token: str, chat_id: str, report: Report) -> int:
         )
         return sent + 1
 
-    for label, helmets in iter_sections(report):
-        send_message(token, chat_id, f"<b>━━━ {label} ━━━</b>")
+    for site, helmets in iter_by_site(report):
+        send_message(token, chat_id, site_banner(site, len(helmets)))
         sent += 1
         time.sleep(delay)
         for r in helmets:

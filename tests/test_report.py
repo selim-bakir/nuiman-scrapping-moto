@@ -48,14 +48,14 @@ def _sample_report() -> Report:
 def test_header_counts():
     text = build_report_text(_sample_report())
     assert "RUPTURES CASQUES SHOEI" in text
-    assert "3 casque(s) surveillé(s) · 🚨 2 à signaler" in text
+    assert "🌐 1 sites · 📦 3 coloris surveillés · 🚨 2 alertes" in text
     assert "🟢 1 complets · 🟡 1 partiels · 🔴 1 ruptures totales" in text
 
 
-def test_only_ruptures_shown():
+def test_only_ruptures_shown_grouped_by_site():
     text = build_report_text(_sample_report())
-    # NXR2 (partiel + rupture) présent, GT-Air 3 (100% dispo) absent
-    assert "━━━ NXR2 ━━━" in text
+    # Bandeau par site, NXR2 (partiel + rupture) présent, GT-Air 3 (100% dispo) absent
+    assert "📍 <b>MOTOBLOUZ</b>" in text
     assert "GT-Air 3" not in text
     assert "PLAIN</a> · 479 €" in text
 

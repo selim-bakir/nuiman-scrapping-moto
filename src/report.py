@@ -82,17 +82,36 @@ def to_report(results) -> list[ProductResult]:
     return [r for r in results if _status(r) in ("partial", "rupture")]
 
 
+def site_banner(site: str, n_alerts: int) -> str:
+    """Gros bandeau de séparation par site (ultra lisible)."""
+    return (
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"📍 <b>{html.escape(site.upper())}</b> — {n_alerts} alerte(s)\n"
+        "━━━━━━━━━━━━━━━━━━━━"
+    )
+
+
+def iter_by_site(report: Report):
+    """Itère (site, [casques à signaler]) — casques triés par gamme puis coloris."""
+    flagged = to_report(report.results)
+    by_site = _group_in_order(flagged, lambda r: r.site or "Site inconnu")
+    for site, helmets in by_site.items():
+        helmets_sorted = sorted(helmets, key=lambda r: (r.gamme or "", r.color or ""))
+        yield site, helmets_sorted
+
+
 def build_header_text(report: Report) -> str:
     """En-tête du rapport (titre, date, compteurs) — 1er message."""
     results = report.results
     ok, partial, rupture, failed = _counts(results)
     brands = [b for b in {r.brand for r in results if r.brand}]
     brand_label = " / ".join(sorted(brands)).upper() if brands else "CASQUES"
+    n_sites = len({r.site for r in results if r.site})
     lines = [
         f"🏍️ <b>RUPTURES CASQUES {html.escape(brand_label)}</b>",
         f"📅 {_fr_date(report.generated_at)}",
         "",
-        f"📦 {len(results)} casque(s) surveillé(s) · 🚨 {len(partial) + len(rupture)} à signaler",
+        f"🌐 {n_sites} sites · 📦 {len(results)} coloris surveillés · 🚨 {len(partial) + len(rupture)} alertes",
         f"🟢 {len(ok)} complets · 🟡 {len(partial)} partiels · 🔴 {len(rupture)} ruptures totales"
         + (f" · ⚠️ {len(failed)} erreurs" if failed else ""),
     ]
@@ -133,12 +152,12 @@ def iter_sections(report: Report):
 
 
 def build_report_text(report: Report) -> str:
-    """Rapport texte complet (en-tête + casques à signaler par gamme)."""
+    """Rapport texte complet, groupé par site (en-tête + bandeau site + casques)."""
     blocks = [build_header_text(report)]
     has_any = False
-    for label, helmets in iter_sections(report):
+    for site, helmets in iter_by_site(report):
         has_any = True
-        section = [f"<b>━━━ {html.escape(label)} ━━━</b>"]
+        section = [site_banner(site, len(helmets))]
         section += [photo_caption(r) for r in helmets]
         blocks.append("\n\n".join(section))
     if not has_any:
