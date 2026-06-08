@@ -89,7 +89,12 @@ async def _expand_categories(context, settings: Settings) -> list[ProductConfig]
                 if scraper is None:
                     print(f"  ! aucun scraper pour la catégorie : {cat}", file=sys.stderr)
                     continue
-                urls = await scraper.list_product_urls(page, cat)
+                # Robustesse : un site en panne ne doit pas bloquer les autres.
+                try:
+                    urls = await scraper.list_product_urls(page, cat)
+                except Exception as exc:  # noqa: BLE001
+                    print(f"  ! échec listing {cat}: {exc}", file=sys.stderr)
+                    continue
                 print(f"  • {len(urls)} produit(s) trouvé(s) dans {cat}")
                 product_configs.extend(ProductConfig(url=u) for u in urls)
         finally:
@@ -324,6 +329,20 @@ def main() -> int:
         help="Envoie le rapport en texte au lieu du mode photo",
     )
     args = parser.parse_args()
+
+    # Garde-fou horaire : deux crons UTC sont déclarés (un pour l'heure d'été, un
+    # pour l'hiver) pour viser 7h Paris toute l'année. On n'exécute que celui qui
+    # tombe bien — sauf lancement manuel (workflow_dispatch / local / --dry-run).
+    if os.getenv("GITHUB_EVENT_NAME") == "schedule" and not args.dry_run:
+        try:
+            from zoneinfo import ZoneInfo
+
+            paris_hour = datetime.now(ZoneInfo("Europe/Paris")).hour
+        except Exception:
+            paris_hour = 7  # en cas de souci, on n'empêche pas l'envoi
+        if paris_hour != 7:
+            print(f"[skip] créneau cron hors 7h Paris (il est {paris_hour}h) — pas d'envoi.")
+            return 0
 
     settings = load_settings()
     if not settings.products and not settings.categories:
