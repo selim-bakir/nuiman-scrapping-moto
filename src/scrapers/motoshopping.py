@@ -138,6 +138,7 @@ class MotoshoppingScraper(BaseScraper):
                 SizeStatus(
                     size=sz,
                     available=s["available"],
+                    deferred=(not s["available"]) and bool(s["date"]),
                     restock=None if s["available"] else _fr_date(s["date"]),
                 )
             )

@@ -205,10 +205,13 @@ def parse_product(nuxt_data_text: str, fallback_url: str) -> list[dict]:
         colors = tuple(c for c in (ma.get("color") or []) if isinstance(c, str))
         key = tuple(sorted(colors)) or ("",)
         if key not in groups:
-            groups[key] = {"avail": {}, "restock": {}, "colors": colors}
+            groups[key] = {"stock": {}, "date": {}, "colors": colors}
             order.append(key)
         g = groups[key]
         forsale = bool(sku.get("forSale"))
+        web = (sku.get("stocks") or {}).get("WEB") or {}
+        # Vrai stock = vendable ET expédition immédiate (pas un délai "déféré").
+        real_stock = forsale and (web.get("shippingKey") == "STOCK")
         sku_delays = [
             w["delay"]
             for w in (sku.get("stocks") or {}).values()
@@ -218,19 +221,25 @@ def parse_product(nuxt_data_text: str, fallback_url: str) -> list[dict]:
         for sz in ma.get("size") or []:
             if not isinstance(sz, str):
                 continue
-            g["avail"][sz] = g["avail"].get(sz, False) or forsale
-            if not forsale and delay:
-                cur = g["restock"].get(sz)
-                g["restock"][sz] = delay if cur is None else min(cur, delay)
+            g["stock"][sz] = g["stock"].get(sz, False) or real_stock
+            if delay:
+                cur = g["date"].get(sz)
+                g["date"][sz] = delay if cur is None else min(cur, delay)
 
     results = []
     for key in order:
         g = groups[key]
         sizes = []
-        for s in _sort_sizes(list(g["avail"])):
-            avail = g["avail"][s]
+        for s in _sort_sizes(list(g["stock"])):
+            available = g["stock"][s]
+            date = None if available else g["date"].get(s)
             sizes.append(
-                SizeStatus(size=s, available=avail, restock=None if avail else g["restock"].get(s))
+                SizeStatus(
+                    size=s,
+                    available=available,
+                    deferred=(not available) and date is not None,
+                    restock=date if not available else None,
+                )
             )
         sold_out = (not in_stock) or (bool(sizes) and not any(s.available for s in sizes))
 

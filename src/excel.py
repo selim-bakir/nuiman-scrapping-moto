@@ -115,7 +115,10 @@ def build_xlsx(report: Report, path: Path) -> Path:
             if st is None:
                 values.append("—")
             elif st.available:
-                values.append("Dispo")
+                values.append("En stock")
+            elif st.deferred:
+                d = fmt_restock(st.restock)
+                values.append(f"Livrable {d}" if d else "Plus tard")
             elif st.restock:
                 values.append(f"Réappro {fmt_restock(st.restock)}")
             else:
@@ -139,7 +142,7 @@ def build_xlsx(report: Report, path: Path) -> Path:
                 cell.fill = _GREY
             elif st.available:
                 cell.fill = _GREEN
-            elif st.restock:
+            elif st.deferred:
                 cell.fill = _ORANGE
             else:
                 cell.fill = _RED

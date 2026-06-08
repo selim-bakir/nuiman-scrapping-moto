@@ -230,11 +230,13 @@ class IcasqueScraper(BaseScraper):
         sizes = []
         for sz in _sort_sizes(list(seen)):
             s = seen[sz]
+            _rs = None if s["available"] else _parse_restock(s.get("text"))
             sizes.append(
                 SizeStatus(
                     size=sz,
                     available=s["available"],
-                    restock=None if s["available"] else _parse_restock(s.get("text")),
+                    deferred=(not s["available"]) and bool(_rs),
+                    restock=_rs,
                 )
             )
         sold_out = bool(sizes) and not any(s.available for s in sizes)

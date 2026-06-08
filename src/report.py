@@ -46,19 +46,19 @@ _STATUS_ICON = {"ok": "🟢", "partial": "🟡", "rupture": "🔴", "error": "�
 
 
 def _unavail_lines(r: ProductResult) -> list[str]:
-    """Une ligne par taille INDISPO : taille + réappro + croisement Dafy."""
+    """Une ligne par taille PAS EN STOCK : 🟠 livrable plus tard / 🔴 rupture."""
     lines = []
     for s in r.sizes:
         if s.available:
             continue
         d = fmt_restock(s.restock)
-        date = f"réappro {d}" if d else "réappro non communiquée"
-        line = f"🔴 <b>{html.escape(s.size)}</b> · {date}"
-        if s.dafy_available is True:
-            line += " · ✅ dispo sur Dafy"
-        elif s.dafy_available is False:
-            line += " · 🟥 confirmé Dafy"
-        lines.append(line)
+        if s.deferred:
+            # Le site accepte la commande mais ce n'est pas du stock (rupture déguisée).
+            when = f"livrable {d}" if d else "livrable plus tard"
+            lines.append(f"🟠 <b>{html.escape(s.size)}</b> · {when} (pas en stock)")
+        else:
+            when = f"réappro {d}" if d else "rupture"
+            lines.append(f"🔴 <b>{html.escape(s.size)}</b> · {when}")
     return lines
 
 
@@ -123,9 +123,7 @@ def build_header_text(report: Report) -> str:
     )
     if confirmed or elsewhere:
         lines.append(f"🔁 Dafy : 🟥 {confirmed} ruptures confirmées · ✅ {elsewhere} dispo ailleurs")
-        lines.append("<i>🔴 indispo · réappro = réassort prévu · ✅/🟥 = croisement Dafy</i>")
-    else:
-        lines.append("<i>🔴 = taille indispo · réappro = réassort prévu</i>")
+    lines.append("<i>🟠 livrable plus tard (pas en stock) · 🔴 rupture</i>")
     return "\n".join(lines)
 
 

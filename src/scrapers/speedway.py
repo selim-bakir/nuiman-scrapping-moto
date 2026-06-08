@@ -189,6 +189,9 @@ class SpeedwayScraper(BaseScraper):
                 SizeStatus(
                     size=sz,
                     available=s["available"],
+                    # Speedway accepte la commande même hors stock (backorder) mais
+                    # sans communiquer de date -> "livrable plus tard" sans date.
+                    deferred=not s["available"],
                     restock=None if s["available"] else _iso_date(s["date"]),
                 )
             )

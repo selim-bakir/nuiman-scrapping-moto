@@ -62,11 +62,22 @@ def test_only_ruptures_shown_grouped_by_site():
 
 def test_only_unavailable_sizes_with_restock():
     text = build_report_text(_sample_report())
-    # PLAIN : seule 2XS est indispo (avec date), les dispo XS/S/M n'apparaissent pas
+    # PLAIN : seule 2XS est indispo (rupture sèche, avec date de réappro)
     assert "🔴 <b>2XS</b> · réappro 20/07/26" in text
     assert "🟢XS" not in text and "🟢 <b>XS" not in text  # aucune taille dispo listée
-    # ACCOLADE : tailles indispo sans date → "non communiquée"
-    assert "🔴 <b>S</b> · réappro non communiquée" in text
+    # ACCOLADE : tailles en rupture sans date
+    assert "🔴 <b>S</b> · rupture" in text
+
+
+def test_deferred_size_shown_as_livrable():
+    from datetime import datetime as dt
+    r = ProductResult(
+        url="u", name="NXR2 X", site="Speedway", brand="Shoei", gamme="NXR2", color="Noir",
+        sizes=[SizeStatus("M", False, deferred=True, restock="2026-07-17T00:00:00+02:00")],
+    )
+    report = Report(generated_at=dt(2026, 6, 8, 8, 0), results=[r])
+    text = build_report_text(report)
+    assert "🟠 <b>M</b> · livrable 17/07/26 (pas en stock)" in text
 
 
 def test_to_report_filters_ok():

@@ -11,11 +11,22 @@ class SizeStatus:
     """Disponibilité d'une taille donnée pour un produit."""
 
     size: str
+    # available=True => EN STOCK réel (expédition immédiate).
     available: bool
-    # Date de réapprovisionnement prévue (ISO) si la taille est indispo, sinon None.
+    # deferred=True (et available=False) => "livrable plus tard" : le site accepte
+    # la commande mais ce n'est PAS du stock (rupture déguisée). Sinon => rupture sèche.
+    deferred: bool = False
+    # Date de réappro / livraison annoncée (ISO) si connue, sinon None.
     restock: str | None = None
     # Croisement Dafy : True=dispo sur Dafy, False=indispo sur Dafy, None=non trouvé.
     dafy_available: bool | None = None
+
+    @property
+    def level(self) -> str:
+        """'stock' | 'deferred' (livrable plus tard) | 'out' (rupture)."""
+        if self.available:
+            return "stock"
+        return "deferred" if self.deferred else "out"
 
 
 @dataclass
@@ -63,6 +74,8 @@ class ProductResult:
                 {
                     "size": s.size,
                     "available": s.available,
+                    "deferred": s.deferred,
+                    "level": s.level,
                     "restock": s.restock,
                     "dafy_available": s.dafy_available,
                 }
