@@ -12,6 +12,12 @@ categories:
   - https://www.motoshopping.com/11-casque-moto-jet/casques_shoei
   # Dafy Moto (casques Shoei ; filtrés ensuite par le focus)
   - https://www.dafy-moto.com/marque/shoei/casque-integral.html
+  # iCasque (GT-Air 3 + J-Cruise 3)
+  - https://www.icasque.com/shoei-gt-air/
+  - https://www.icasque.com/Casque-moto/shoei-j-cruise-3/
+  # Speedway (GT-Air 3 + J-Cruise 3)
+  - https://www.speedway.fr/shoei-gt-air-3
+  - https://www.speedway.fr/shoei-j-cruise-3
 
 # --- Produits unitaires (optionnel) ---
 # url (requis) · label (option.) · sizes (option., liste blanche de tailles)
