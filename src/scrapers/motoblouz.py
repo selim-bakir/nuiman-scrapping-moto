@@ -88,11 +88,25 @@ _FR_EN = {
 }
 
 
-def _picture_for_colors(pictures: list, colors: tuple) -> tuple[str, str | None]:
-    """Trouve la photo + la finition (mat/brillant) du coloris donné.
+_EN_COLORS = {
+    "black", "white", "grey", "gray", "blue", "red", "green", "yellow",
+    "orange", "silver", "pink", "purple", "brown", "beige", "gold",
+}
+_FINISH_WORDS = {"matt", "matte", "mat", "gloss", "glossy", "satin", "brillant"}
 
-    Les images portent le nom de coloris précis (ex 'Matt blue'), les SKU n'ont
-    que la couleur de base (ex 'Bleu') : on relie les deux via FR↔EN.
+
+def _qualifier(picname: str | None) -> str:
+    """Extrait le qualificatif distinctif d'un nom de coloris (ex 'Basalt Grey' -> 'Basalt')."""
+    toks = re.findall(r"[a-zàâéèêëîïôûùç]+", (picname or "").lower())
+    out = [t for t in toks if t not in _EN_COLORS and t not in _FINISH_WORDS and len(t) >= 3]
+    return " ".join(t.capitalize() for t in out)
+
+
+def _picture_for_colors(pictures: list, colors: tuple) -> tuple[str, str | None, str]:
+    """Trouve la photo, la finition (mat/brillant) et le nom de coloris précis.
+
+    Les images portent le nom de coloris précis (ex 'Matt blue', 'Basalt Grey'),
+    les SKU n'ont que la couleur de base (ex 'Bleu') : on relie via FR↔EN.
     """
     terms = set()
     for c in colors:
@@ -107,9 +121,10 @@ def _picture_for_colors(pictures: list, colors: tuple) -> tuple[str, str | None]
         if pc and any(t in pc for t in terms):
             chosen = pic
             break
-    finish, image = "", None
+    finish, image, picname = "", None, ""
     if chosen:
-        hay = f"{(chosen.get('color') or '').lower()} {(chosen.get('url') or '').lower()}"
+        picname = chosen.get("color") or ""
+        hay = f"{picname.lower()} {(chosen.get('url') or '').lower()}"
         if "matt" in hay or re.search(r"\bmat\b|-mat|mat[._-]", hay):
             finish = "mat"
         elif "gloss" in hay or "brillant" in hay:
@@ -118,7 +133,7 @@ def _picture_for_colors(pictures: list, colors: tuple) -> tuple[str, str | None]
             finish = "satin"
         if chosen.get("url"):
             image = IMG_CDN + chosen["url"]
-    return finish, image
+    return finish, image, picname
 
 
 def parse_product(nuxt_data_text: str, fallback_url: str) -> list[dict]:
@@ -220,19 +235,22 @@ def parse_product(nuxt_data_text: str, fallback_url: str) -> list[dict]:
         sold_out = (not in_stock) or (bool(sizes) and not any(s.available for s in sizes))
 
         colors_str = "/".join(g["colors"][:3]) if g["colors"] else None
-        finish, image = _picture_for_colors(pictures, g["colors"])
+        finish, image, picname = _picture_for_colors(pictures, g["colors"])
         if finition and colors_str:
             color = f"{finition} · {colors_str}"
         elif finition:
             color = finition
         elif colors_str:
+            # Coloris uni : couleur de base + qualificatif distinctif + finition.
+            label = colors_str
+            qualif = _qualifier(picname)
+            if qualif:
+                label += f" {qualif}"
             if finish:
-                color = f"{colors_str} {finish}"
+                label += f" {finish}"
             elif colors_str.lower() == "noir":
-                # Noir sans "matte" = Noir brillant (verni = finition par défaut Shoei).
-                color = "Noir brillant"
-            else:
-                color = colors_str
+                label += " brillant"  # Noir sans "matte" = Noir brillant (Shoei)
+            color = label
         else:
             color = None
 
