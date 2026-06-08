@@ -2,8 +2,11 @@ name: Rapport quotidien dispo moto
 
 on:
   schedule:
-    # 06:00 UTC = 08:00 Paris (heure d'été) / 07:00 (heure d'hiver).
-    - cron: "0 6 * * *"
+    # Cible 7h15 à Paris toute l'année (le script ignore le mauvais créneau via le
+    # garde-fou horaire). 05:15 UTC = 7h15 Paris l'été ; 06:15 UTC = 7h15 l'hiver.
+    # Avec ~6 min d'exécution, le rapport arrive vers 7h25–7h35.
+    - cron: "15 5 * * *"
+    - cron: "15 6 * * *"
   # Permet de lancer le rapport manuellement depuis l'onglet Actions.
   workflow_dispatch: {}
 
