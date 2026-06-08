@@ -18,6 +18,12 @@ categories:
   # Speedway (GT-Air 3 + J-Cruise 3)
   - https://www.speedway.fr/shoei-gt-air-3
   - https://www.speedway.fr/shoei-j-cruise-3
+  # Moto Axxe (Izberg)
+  - https://www.moto-axxe.fr/categorie/casque-integral-16/SHOEI
+  - https://www.moto-axxe.fr/categorie/casque-jet-18/SHOEI
+  # Maxxess (Izberg)
+  - https://www.maxxess.fr/categorie/casque-integral-16/SHOEI
+  - https://www.maxxess.fr/categorie/casque-jet-18/SHOEI
 
 # --- Produits unitaires (optionnel) ---
 # url (requis) · label (option.) · sizes (option., liste blanche de tailles)

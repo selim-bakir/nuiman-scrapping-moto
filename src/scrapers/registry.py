@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from .base import BaseScraper
 from .dafy import DafyScraper
 from .icasque import IcasqueScraper
+from .izberg import IzbergScraper
 from .motoblouz import MotoblouzScraper
 from .motoshopping import MotoshoppingScraper
 from .speedway import SpeedwayScraper
@@ -18,6 +19,7 @@ _SCRAPERS: list[BaseScraper] = [
     DafyScraper(),
     IcasqueScraper(),
     SpeedwayScraper(),
+    IzbergScraper(),
 ]
 
 
