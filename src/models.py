@@ -28,6 +28,8 @@ class ProductResult:
     # Coloris / déclinaison (ex: "PLAIN", "ACCOLADE").
     color: str | None = None
     price: str | None = None
+    # URL de la photo principale du casque.
+    image: str | None = None
     sizes: list[SizeStatus] = field(default_factory=list)
     # True quand le produit entier est en rupture (aucune taille disponible).
     sold_out: bool = False
@@ -52,6 +54,7 @@ class ProductResult:
             "gamme": self.gamme,
             "color": self.color,
             "price": self.price,
+            "image": self.image,
             "sizes": [{"size": s.size, "available": s.available} for s in self.sizes],
             "sold_out": self.sold_out,
             "error": self.error,

@@ -16,11 +16,20 @@ from pathlib import Path
 
 from playwright.async_api import async_playwright
 
+import os
+import time
+
 from .config import ProductConfig, Settings, load_settings
 from .models import ProductResult, Report
-from .report import build_report_text, split_for_telegram
+from .report import (
+    build_header_text,
+    build_report_text,
+    iter_sections,
+    photo_caption,
+    split_for_telegram,
+)
 from .scrapers.registry import get_scraper
-from .telegram import send_report
+from .telegram import send_message, send_photo, send_report
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -155,12 +164,48 @@ def _save_report(report: Report) -> Path:
     return path
 
 
+def _send_photo_report(token: str, chat_id: str, report: Report) -> int:
+    """Envoie un message photo par casque (légende = dispo), groupé par gamme.
+
+    Throttlé pour respecter le rate-limit Telegram. Repli en message texte si
+    un casque n'a pas de photo ou si l'envoi de la photo échoue.
+    """
+    delay = int(os.getenv("TELEGRAM_SEND_DELAY_MS", "1500")) / 1000
+    sent = 0
+
+    send_message(token, chat_id, build_header_text(report))
+    sent += 1
+
+    for label, helmets in iter_sections(report):
+        send_message(token, chat_id, f"<b>━━━ {label} ━━━</b>")
+        sent += 1
+        time.sleep(delay)
+        for r in helmets:
+            caption = photo_caption(r)
+            try:
+                if r.image and not r.error:
+                    send_photo(token, chat_id, r.image, caption)
+                else:
+                    send_message(token, chat_id, caption)
+            except Exception as exc:  # noqa: BLE001 — repli texte si la photo échoue
+                print(f"  ! photo KO ({r.name}): {exc} → repli texte", file=sys.stderr)
+                send_message(token, chat_id, caption)
+            sent += 1
+            time.sleep(delay)
+    return sent
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Rapport disponibilité accessoires moto")
+    parser = argparse.ArgumentParser(description="Rapport disponibilité casques moto")
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Affiche le rapport sans l'envoyer sur Telegram",
+    )
+    parser.add_argument(
+        "--text",
+        action="store_true",
+        help="Envoie le rapport en texte au lieu du mode photo",
     )
     args = parser.parse_args()
 
@@ -175,7 +220,6 @@ def main() -> int:
     report = asyncio.run(run_scraping(settings))
     saved = _save_report(report)
     text = build_report_text(report)
-    chunks = split_for_telegram(text)
 
     print(f"Rapport sauvegardé : {saved}")
     print("-" * 60)
@@ -193,8 +237,15 @@ def main() -> int:
         )
         return 1
 
-    send_report(settings.telegram_bot_token, settings.telegram_chat_id, chunks)
-    print(f"Rapport envoyé sur Telegram ({len(chunks)} message(s)).")
+    if args.text:
+        chunks = split_for_telegram(text)
+        send_report(settings.telegram_bot_token, settings.telegram_chat_id, chunks)
+        print(f"Rapport texte envoyé sur Telegram ({len(chunks)} message(s)).")
+    else:
+        n = _send_photo_report(
+            settings.telegram_bot_token, settings.telegram_chat_id, report
+        )
+        print(f"Rapport photo envoyé sur Telegram ({n} message(s)).")
     return 0
 
 

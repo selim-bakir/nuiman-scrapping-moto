@@ -61,6 +61,58 @@ def _group_in_order(items, key):
     return groups
 
 
+def _counts(results):
+    ok = [r for r in results if _status(r) == "ok"]
+    partial = [r for r in results if _status(r) == "partial"]
+    rupture = [r for r in results if _status(r) == "rupture"]
+    failed = [r for r in results if _status(r) == "error"]
+    return ok, partial, rupture, failed
+
+
+def build_header_text(report: Report) -> str:
+    """En-tête du rapport (titre, date, compteurs, légende) — 1er message."""
+    results = report.results
+    ok, partial, rupture, failed = _counts(results)
+    brands = [b for b in {r.brand for r in results if r.brand}]
+    brand_label = " / ".join(sorted(brands)).upper() if brands else "CASQUES"
+    lines = [
+        f"🏍️ <b>DISPO CASQUES {html.escape(brand_label)}</b>",
+        f"📅 {_fr_date(report.generated_at)}",
+        "",
+        f"📦 {len(results)} casque(s) surveillé(s)",
+        f"🟢 {len(ok)} complets · 🟡 {len(partial)} partiels · 🔴 {len(rupture)} ruptures"
+        + (f" · ⚠️ {len(failed)} erreurs" if failed else ""),
+        "<i>🟢 taille dispo · 🔴 taille indispo</i>",
+    ]
+    return "\n".join(lines)
+
+
+def photo_caption(r: ProductResult) -> str:
+    """Légende d'une photo de casque : statut, nom, prix, pastilles, lien."""
+    icon = _STATUS_ICON[_status(r)]
+    title_label = r.color or r.gamme or r.name
+    if r.gamme and r.color:
+        title_label = f"{r.gamme} — {r.color}"
+    line = f'{icon} <a href="{html.escape(r.url)}">{html.escape(title_label)}</a>'
+    if r.price:
+        line += f" · {html.escape(r.price)}"
+    elif _status(r) == "rupture":
+        line += " · rupture"
+    pastilles = _pastilles(r)
+    return f"{line}\n{pastilles}" if pastilles else line
+
+
+def iter_sections(report: Report):
+    """Itère (label_gamme, [casques]) groupés par site puis gamme (ordre conservé)."""
+    by_site = _group_in_order(report.results, lambda r: r.site or "Site inconnu")
+    multi = len(by_site) > 1
+    for site, site_results in by_site.items():
+        by_gamme = _group_in_order(site_results, lambda r: r.gamme or "Autres")
+        for gamme, helmets in by_gamme.items():
+            label = f"{site} · {gamme}" if multi else gamme
+            yield label, helmets
+
+
 def build_report_text(report: Report) -> str:
     results = report.results
     ok = [r for r in results if _status(r) == "ok"]

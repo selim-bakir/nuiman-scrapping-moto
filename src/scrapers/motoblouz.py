@@ -23,6 +23,9 @@ from .base import BaseScraper
 # Ordre canonique d'affichage des tailles casque.
 SIZE_ORDER = ["3XS", "2XS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"]
 
+# Base CDN des images produit (resize 580px).
+IMG_CDN = "https://media-imgproxy.motoblouz.com/_/rs580"
+
 
 def _devalue_resolver(data: list):
     """Construit un résolveur pour le format devalue de Nuxt.
@@ -143,6 +146,13 @@ def parse_product(nuxt_data_text: str, fallback_url: str) -> dict:
                 if pp is not None:
                     public_val = pp if public_val is None else min(public_val, pp)
 
+    # Photo principale : 1re image disponible du produit.
+    image = None
+    for pic in prod.get("pictures") or []:
+        if isinstance(pic, dict) and isinstance(pic.get("url"), str):
+            image = IMG_CDN + pic["url"]
+            break
+
     return {
         "name": display,
         "brand": brand,
@@ -150,6 +160,7 @@ def parse_product(nuxt_data_text: str, fallback_url: str) -> dict:
         "color": color,
         "url": prod.get("url") or fallback_url,
         "price": _format_price(price_val if price_val is not None else public_val),
+        "image": image,
         "sizes": sizes,
         "sold_out": sold_out,
     }
@@ -251,6 +262,7 @@ class MotoblouzScraper(BaseScraper):
             gamme=info["gamme"],
             color=info["color"],
             price=info["price"],
+            image=info["image"],
             sizes=sizes,
             sold_out=info["sold_out"],
             scraped_at=datetime.now(),
