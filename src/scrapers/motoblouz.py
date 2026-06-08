@@ -125,8 +125,13 @@ def parse_product(nuxt_data_text: str, fallback_url: str) -> dict:
         if not isinstance(sku, dict):
             continue
         forsale = bool(sku.get("forSale"))
-        web = (sku.get("stocks") or {}).get("WEB") or {}
-        delay = web.get("delay") if isinstance(web, dict) else None
+        # Date de réappro = la plus proche parmi TOUS les entrepôts (pas que WEB).
+        sku_delays = [
+            w["delay"]
+            for w in (sku.get("stocks") or {}).values()
+            if isinstance(w, dict) and isinstance(w.get("delay"), str) and w.get("delay")
+        ]
+        delay = min(sku_delays) if sku_delays else None
         ma = sku.get("mappedAttributes") or {}
         for sz in ma.get("size") or []:
             if not isinstance(sz, str):
@@ -197,8 +202,8 @@ _LISTING_JS = r"""
     let u;
     try { u = new URL(raw, location.origin); } catch (e) { continue; }
     if (u.origin !== location.origin) continue;
-    // Uniquement les casques (exclut bavettes, écrans, pinlock & autres accessoires).
-    if (!/^\/vente-casque-.*-\d+\.html$/.test(u.pathname)) continue;
+    // Uniquement les casques INTÉGRAUX et JET (exclut modulables + accessoires).
+    if (!/^\/vente-casque-(integral|jet)-.*-\d+\.html$/.test(u.pathname)) continue;
     const full = u.origin + u.pathname;
     if (seen.has(full)) continue;
     seen.add(full);

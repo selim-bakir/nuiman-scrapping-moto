@@ -45,21 +45,16 @@ def _status(r: ProductResult) -> str:
 _STATUS_ICON = {"ok": "🟢", "partial": "🟡", "rupture": "🔴", "error": "⚠️"}
 
 
-def _pastilles(r: ProductResult) -> str:
-    return " ".join(
-        f"{'🟢' if s.available else '🔴'}{html.escape(s.size)}" for s in r.sizes
-    )
-
-
-def _restock_line(r: ProductResult) -> str | None:
-    """Ligne listant la date de réappro des tailles indispo qui en ont une."""
-    bits = []
+def _unavail_lines(r: ProductResult) -> list[str]:
+    """Une ligne par taille INDISPO : taille + date de réappro (ou non communiquée)."""
+    lines = []
     for s in r.sizes:
-        if not s.available and s.restock:
-            d = fmt_restock(s.restock)
-            if d:
-                bits.append(f"{html.escape(s.size)} {d}")
-    return "📦 réappro : " + " · ".join(bits) if bits else None
+        if s.available:
+            continue
+        d = fmt_restock(s.restock)
+        date = f"réappro {d}" if d else "réappro non communiquée"
+        lines.append(f"🔴 <b>{html.escape(s.size)}</b> · {date}")
+    return lines
 
 
 def _group_in_order(items, key):
@@ -95,28 +90,19 @@ def build_header_text(report: Report) -> str:
         f"📦 {len(results)} casque(s) surveillé(s) · 🚨 {len(partial) + len(rupture)} à signaler",
         f"🟢 {len(ok)} complets · 🟡 {len(partial)} partiels · 🔴 {len(rupture)} ruptures totales"
         + (f" · ⚠️ {len(failed)} erreurs" if failed else ""),
-        "<i>🟢 dispo · 🔴 indispo · 📦 = réappro prévu</i>",
+        "<i>🔴 = taille indispo · réappro = réassort prévu</i>",
     ]
     return "\n".join(lines)
 
 
 def photo_caption(r: ProductResult) -> str:
-    """Légende d'une photo : statut, nom, prix, pastilles, réappro, lien."""
+    """Légende d'une photo : statut, nom, prix, puis les tailles indispo + réappro."""
     icon = _STATUS_ICON[_status(r)]
     title_label = f"{r.gamme} — {r.color}" if (r.gamme and r.color) else (r.color or r.gamme or r.name)
     line = f'{icon} <a href="{html.escape(r.url)}">{html.escape(title_label)}</a>'
     if r.price:
         line += f" · {html.escape(r.price)}"
-    elif _status(r) == "rupture":
-        line += " · rupture"
-    parts = [line]
-    pastilles = _pastilles(r)
-    if pastilles:
-        parts.append(pastilles)
-    restock = _restock_line(r)
-    if restock:
-        parts.append(restock)
-    return "\n".join(parts)
+    return "\n".join([line, *_unavail_lines(r)])
 
 
 def iter_sections(report: Report):

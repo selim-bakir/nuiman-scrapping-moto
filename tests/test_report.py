@@ -60,9 +60,13 @@ def test_only_ruptures_shown():
     assert "PLAIN</a> · 479 €" in text
 
 
-def test_restock_line():
+def test_only_unavailable_sizes_with_restock():
     text = build_report_text(_sample_report())
-    assert "📦 réappro : 2XS 20/07/26" in text
+    # PLAIN : seule 2XS est indispo (avec date), les dispo XS/S/M n'apparaissent pas
+    assert "🔴 <b>2XS</b> · réappro 20/07/26" in text
+    assert "🟢XS" not in text and "🟢 <b>XS" not in text  # aucune taille dispo listée
+    # ACCOLADE : tailles indispo sans date → "non communiquée"
+    assert "🔴 <b>S</b> · réappro non communiquée" in text
 
 
 def test_to_report_filters_ok():
