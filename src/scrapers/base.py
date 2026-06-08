@@ -24,8 +24,8 @@ class BaseScraper(ABC):
     site_name: str = ""
 
     @abstractmethod
-    async def scrape(self, page: Page, product: ProductConfig) -> ProductResult:
-        """Scrape une page produit et renvoie un ``ProductResult``."""
+    async def scrape(self, page: Page, product: ProductConfig) -> list[ProductResult]:
+        """Scrape une page produit et renvoie un ``ProductResult`` par coloris."""
         raise NotImplementedError
 
     async def list_product_urls(

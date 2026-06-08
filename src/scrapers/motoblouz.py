@@ -79,8 +79,50 @@ def _format_price(value) -> str | None:
     return f"{f:.2f} €".replace(".", ",")
 
 
-def parse_product(nuxt_data_text: str, fallback_url: str) -> dict:
-    """Extrait les infos produit depuis le texte du script `#__NUXT_DATA__`."""
+# Couleur FR (SKU) -> termes EN possibles dans le nom de coloris des images.
+_FR_EN = {
+    "noir": ("black",), "blanc": ("white",), "gris": ("grey", "gray"),
+    "bleu": ("blue",), "rouge": ("red",), "vert": ("green",), "jaune": ("yellow",),
+    "orange": ("orange",), "argent": ("silver",), "rose": ("pink",),
+    "violet": ("purple",), "marron": ("brown",), "beige": ("beige",), "or": ("gold",),
+}
+
+
+def _picture_for_colors(pictures: list, colors: tuple) -> tuple[str, str | None]:
+    """Trouve la photo + la finition (mat/brillant) du coloris donné.
+
+    Les images portent le nom de coloris précis (ex 'Matt blue'), les SKU n'ont
+    que la couleur de base (ex 'Bleu') : on relie les deux via FR↔EN.
+    """
+    terms = set()
+    for c in colors:
+        cl = c.lower()
+        terms.add(cl)
+        terms.update(_FR_EN.get(cl, ()))
+    chosen = None
+    for pic in pictures:
+        if not isinstance(pic, dict):
+            continue
+        pc = (pic.get("color") or "").lower()
+        if pc and any(t in pc for t in terms):
+            chosen = pic
+            break
+    finish, image = "", None
+    if chosen:
+        hay = f"{(chosen.get('color') or '').lower()} {(chosen.get('url') or '').lower()}"
+        if "matt" in hay or re.search(r"\bmat\b|-mat|mat[._-]", hay):
+            finish = "mat"
+        elif "gloss" in hay or "brillant" in hay:
+            finish = "brillant"
+        elif "satin" in hay:
+            finish = "satin"
+        if chosen.get("url"):
+            image = IMG_CDN + chosen["url"]
+    return finish, image
+
+
+def parse_product(nuxt_data_text: str, fallback_url: str) -> list[dict]:
+    """Extrait les coloris d'un produit (un dict par coloris) depuis `#__NUXT_DATA__`."""
     data = json.loads(nuxt_data_text)
     resolve = _devalue_resolver(data)
 
@@ -117,48 +159,6 @@ def parse_product(nuxt_data_text: str, fallback_url: str) -> dict:
     gamme = (gamme or "").strip() or None
     finition = (finition or "").strip() if finition else None
 
-    # Disponibilité agrégée par taille : dispo si au moins un SKU est `forSale`.
-    # Pour les tailles indispo, on récupère la date de réappro la plus proche
-    # (stocks.WEB.delay des SKU en attente de réassort).
-    size_avail: dict[str, bool] = {}
-    size_restock: dict[str, str] = {}
-    colors_seen: list[str] = []
-    for sku in prod.get("skus") or []:
-        if not isinstance(sku, dict):
-            continue
-        forsale = bool(sku.get("forSale"))
-        for c in (sku.get("mappedAttributes") or {}).get("color") or []:
-            if isinstance(c, str) and c not in colors_seen:
-                colors_seen.append(c)
-        # Date de réappro = la plus proche parmi TOUS les entrepôts (pas que WEB).
-        sku_delays = [
-            w["delay"]
-            for w in (sku.get("stocks") or {}).values()
-            if isinstance(w, dict) and isinstance(w.get("delay"), str) and w.get("delay")
-        ]
-        delay = min(sku_delays) if sku_delays else None
-        ma = sku.get("mappedAttributes") or {}
-        for sz in ma.get("size") or []:
-            if not isinstance(sz, str):
-                continue
-            size_avail[sz] = size_avail.get(sz, False) or forsale
-            # Date de réappro = delay d'un SKU indispo (la plus proche dans le temps).
-            if not forsale and isinstance(delay, str) and delay:
-                cur = size_restock.get(sz)
-                size_restock[sz] = delay if cur is None else min(cur, delay)
-
-    sizes = []
-    for s in _sort_sizes(list(size_avail)):
-        avail = size_avail[s]
-        sizes.append(
-            SizeStatus(
-                size=s,
-                available=avail,
-                restock=None if avail else size_restock.get(s),
-            )
-        )
-    sold_out = (not prod.get("inStock")) or (bool(sizes) and not any(s.available for s in sizes))
-
     # Prix de vente TTC : sellPrice.inclTax d'un SKU du produit (le plus bas).
     # Repli sur publicPrice (prix conseillé) si aucun prix de vente (ex: rupture).
     price_val = None
@@ -174,55 +174,80 @@ def parse_product(nuxt_data_text: str, fallback_url: str) -> dict:
                 pp = (pr.get("publicPrice") or {}).get("inclTax")
                 if pp is not None:
                     public_val = pp if public_val is None else min(public_val, pp)
+    price = _format_price(price_val if price_val is not None else public_val)
 
-    # Photo principale + chemin brut (pour déduire la finition mat/brillant).
-    image = None
-    raw_fp = ""
-    for pic in prod.get("pictures") or []:
-        if isinstance(pic, dict) and isinstance(pic.get("url"), str):
-            image = IMG_CDN + pic["url"]
-            raw_fp = pic["url"].lower()
-            break
+    pictures = prod.get("pictures") or []
+    in_stock = bool(prod.get("inStock"))
 
-    # Finition mat/brillant/satin déduite du nom de fichier image ET du slug URL
-    # (Motoblouz ne distingue pas "Noir mat" de "Noir brillant" dans la couleur).
-    hay = f"{raw_fp} {fallback_url.lower()}"
-    finish = ""
-    if re.search(r"\bmat\b|-mat|mat[._-]", hay):
-        finish = "mat"
-    elif "brillant" in hay or "brill" in hay:
-        finish = "brillant"
-    elif "satin" in hay:
-        finish = "satin"
+    # On regroupe les SKU par COLORIS (combinaison de couleurs) afin d'éclater les
+    # fiches multi-coloris (ex: une fiche "GT-AIR 3" = Bleu mat + Gris mat + Jaune).
+    groups: dict[tuple, dict] = {}
+    order: list[tuple] = []
+    for sku in prod.get("skus") or []:
+        if not isinstance(sku, dict):
+            continue
+        ma = sku.get("mappedAttributes") or {}
+        colors = tuple(c for c in (ma.get("color") or []) if isinstance(c, str))
+        key = tuple(sorted(colors)) or ("",)
+        if key not in groups:
+            groups[key] = {"avail": {}, "restock": {}, "colors": colors}
+            order.append(key)
+        g = groups[key]
+        forsale = bool(sku.get("forSale"))
+        sku_delays = [
+            w["delay"]
+            for w in (sku.get("stocks") or {}).values()
+            if isinstance(w, dict) and isinstance(w.get("delay"), str) and w.get("delay")
+        ]
+        delay = min(sku_delays) if sku_delays else None
+        for sz in ma.get("size") or []:
+            if not isinstance(sz, str):
+                continue
+            g["avail"][sz] = g["avail"].get(sz, False) or forsale
+            if not forsale and delay:
+                cur = g["restock"].get(sz)
+                g["restock"][sz] = delay if cur is None else min(cur, delay)
 
-    # Coloris affiché = finition/série + couleurs réelles (+ mat/brillant pour les unis).
-    colors_str = "/".join(colors_seen[:3]) if colors_seen else None
-    if finition and colors_str:
-        color = f"{finition} · {colors_str}"
-    elif finition:
-        color = finition
-    elif colors_str:
-        if finish:
-            color = f"{colors_str} {finish}"
-        elif colors_str.lower() == "noir":
-            # Noir sans "matte" = Noir brillant (le verni est la finition par défaut Shoei).
-            color = "Noir brillant"
+    results = []
+    for key in order:
+        g = groups[key]
+        sizes = []
+        for s in _sort_sizes(list(g["avail"])):
+            avail = g["avail"][s]
+            sizes.append(
+                SizeStatus(size=s, available=avail, restock=None if avail else g["restock"].get(s))
+            )
+        sold_out = (not in_stock) or (bool(sizes) and not any(s.available for s in sizes))
+
+        colors_str = "/".join(g["colors"][:3]) if g["colors"] else None
+        finish, image = _picture_for_colors(pictures, g["colors"])
+        if finition and colors_str:
+            color = f"{finition} · {colors_str}"
+        elif finition:
+            color = finition
+        elif colors_str:
+            if finish:
+                color = f"{colors_str} {finish}"
+            elif colors_str.lower() == "noir":
+                # Noir sans "matte" = Noir brillant (verni = finition par défaut Shoei).
+                color = "Noir brillant"
+            else:
+                color = colors_str
         else:
-            color = colors_str
-    else:
-        color = None
+            color = None
 
-    return {
-        "name": display,
-        "brand": brand,
-        "gamme": gamme,
-        "color": color,
-        "url": prod.get("url") or fallback_url,
-        "price": _format_price(price_val if price_val is not None else public_val),
-        "image": image,
-        "sizes": sizes,
-        "sold_out": sold_out,
-    }
+        if image is None:  # repli : 1re image du produit
+            for pic in pictures:
+                if isinstance(pic, dict) and pic.get("url"):
+                    image = IMG_CDN + pic["url"]
+                    break
+
+        results.append({
+            "name": display, "brand": brand, "gamme": gamme, "color": color,
+            "url": prod.get("url") or fallback_url, "price": price,
+            "image": image, "sizes": sizes, "sold_out": sold_out,
+        })
+    return results
 
 
 # Collecte des URLs produits sur une page listing (liens /vente-...-<id>.html).
@@ -298,7 +323,7 @@ class MotoblouzScraper(BaseScraper):
 
         return ordered
 
-    async def scrape(self, page: Page, product: ProductConfig) -> ProductResult:
+    async def scrape(self, page: Page, product: ProductConfig) -> list[ProductResult]:
         await page.goto(product.url, wait_until="domcontentloaded")
         # Le payload est un <script> (donc "hidden") : on attend son attachement.
         await page.wait_for_selector("#__NUXT_DATA__", state="attached", timeout=15000)
@@ -306,23 +331,25 @@ class MotoblouzScraper(BaseScraper):
         if not nd:
             raise ValueError("Payload Nuxt absent de la page")
 
-        info = parse_product(nd, product.url)
-
-        sizes = info["sizes"]
-        if product.sizes:
-            wanted = {s.upper() for s in product.sizes}
-            sizes = [s for s in sizes if s.size.upper() in wanted]
-
-        return ProductResult(
-            url=info["url"],
-            name=product.label or info["name"],
-            site=self.site_name,
-            brand=info["brand"],
-            gamme=info["gamme"],
-            color=info["color"],
-            price=info["price"],
-            image=info["image"],
-            sizes=sizes,
-            sold_out=info["sold_out"],
-            scraped_at=datetime.now(),
-        )
+        wanted = {s.upper() for s in product.sizes} if product.sizes else None
+        out = []
+        for info in parse_product(nd, product.url):
+            sizes = info["sizes"]
+            if wanted:
+                sizes = [s for s in sizes if s.size.upper() in wanted]
+            out.append(
+                ProductResult(
+                    url=info["url"],
+                    name=product.label or info["name"],
+                    site=self.site_name,
+                    brand=info["brand"],
+                    gamme=info["gamme"],
+                    color=info["color"],
+                    price=info["price"],
+                    image=info["image"],
+                    sizes=sizes,
+                    sold_out=info["sold_out"],
+                    scraped_at=datetime.now(),
+                )
+            )
+        return out

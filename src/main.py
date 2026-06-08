@@ -45,15 +45,15 @@ REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"
 
 async def _scrape_one(
     context, product: ProductConfig, timeout_ms: int, delay_ms: int
-) -> ProductResult:
+) -> list[ProductResult]:
     scraper = get_scraper(product.url)
     if scraper is None:
-        return ProductResult(
+        return [ProductResult(
             url=product.url,
             name=product.label or product.url,
             error="Aucun scraper pour ce domaine",
             scraped_at=datetime.now(),
-        )
+        )]
 
     # Rate-limiting : petit délai avant chaque requête pour rester poli.
     if delay_ms > 0:
@@ -64,13 +64,13 @@ async def _scrape_one(
     try:
         return await scraper.scrape(page, product)
     except Exception as exc:  # noqa: BLE001 — on isole l'échec d'un produit
-        return ProductResult(
+        return [ProductResult(
             url=product.url,
             name=product.label or product.url,
             site=scraper.site_name or None,
             error=f"{type(exc).__name__}: {exc}",
             scraped_at=datetime.now(),
-        )
+        )]
     finally:
         await page.close()
 
@@ -137,7 +137,8 @@ async def _scrape_category_urls(context, cats: list[str], settings: Settings):
                 context, ProductConfig(url=u), settings.page_timeout_ms, settings.request_delay_ms
             )
 
-    return list(await asyncio.gather(*(_guarded(u) for u in ordered)))
+    nested = await asyncio.gather(*(_guarded(u) for u in ordered))
+    return [r for sub in nested for r in sub]
 
 
 async def run_scraping(settings: Settings) -> Report:
@@ -160,7 +161,8 @@ async def run_scraping(settings: Settings) -> Report:
                     settings.request_delay_ms,
                 )
 
-        results = _dedupe_results(list(await asyncio.gather(*(_guarded(p) for p in products))))
+        nested = await asyncio.gather(*(_guarded(p) for p in products))
+        results = _dedupe_results([r for sub in nested for r in sub])
         results = _apply_focus(results, settings)
         print(f"→ {len(results)} casque(s) après filtre focus")
 
@@ -220,14 +222,15 @@ def _dedupe_results(results: list[ProductResult]) -> list[ProductResult]:
     nom court. On déduplique donc strictement par URL (et l'expansion des
     catégories garantit déjà l'unicité des URLs).
     """
-    best: dict[str, ProductResult] = {}
-    order: list[str] = []
+    best: dict[tuple, ProductResult] = {}
+    order: list[tuple] = []
     for r in results:
-        if r.url not in best:
-            best[r.url] = r
-            order.append(r.url)
-        elif best[r.url].error and not r.error:
-            best[r.url] = r
+        key = (r.url, (r.color or "").lower())  # 1 URL peut avoir plusieurs coloris
+        if key not in best:
+            best[key] = r
+            order.append(key)
+        elif best[key].error and not r.error:
+            best[key] = r
     return [best[k] for k in order]
 
 

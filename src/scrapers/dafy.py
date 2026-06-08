@@ -162,7 +162,7 @@ class DafyScraper(BaseScraper):
                 ordered.append(u)
         return _drop_generic_urls(ordered)
 
-    async def scrape(self, page: Page, product: ProductConfig) -> ProductResult:
+    async def scrape(self, page: Page, product: ProductConfig) -> list[ProductResult]:
         await page.goto(product.url, wait_until="domcontentloaded")
         # Le titre est server-rendered ; on l'attend pour confirmer le chargement.
         await page.wait_for_selector("h1", timeout=15000)
@@ -178,12 +178,14 @@ class DafyScraper(BaseScraper):
 
         sold_out = data["soldOut"] or (bool(sizes) and not any(s.available for s in sizes))
 
-        return ProductResult(
-            url=product.url,
-            name=product.label or data["name"] or product.url,
-            site=self.site_name,
-            price=data["price"],
-            sizes=sizes,
-            sold_out=sold_out,
-            scraped_at=datetime.now(),
-        )
+        return [
+            ProductResult(
+                url=product.url,
+                name=product.label or data["name"] or product.url,
+                site=self.site_name,
+                price=data["price"],
+                sizes=sizes,
+                sold_out=sold_out,
+                scraped_at=datetime.now(),
+            )
+        ]
