@@ -11,6 +11,7 @@ from .izberg import IzbergScraper
 from .motoblouz import MotoblouzScraper
 from .motoshopping import MotoshoppingScraper
 from .speedway import SpeedwayScraper
+from .teamaxe import TeamAxeScraper
 
 # Pour ajouter un site : instancier le scraper ici.
 _SCRAPERS: list[BaseScraper] = [
@@ -20,6 +21,7 @@ _SCRAPERS: list[BaseScraper] = [
     IcasqueScraper(),
     SpeedwayScraper(),
     IzbergScraper(),
+    TeamAxeScraper(),
 ]
 
 

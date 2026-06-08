@@ -22,7 +22,8 @@ jobs:
       - name: Installer les dépendances
         run: |
           pip install -r requirements.txt
-          python -m playwright install --with-deps chromium
+          # Firefox requis pour Team Axe (Cloudflare bloque Chromium)
+          python -m playwright install --with-deps chromium firefox
 
       - name: Générer et envoyer le rapport
         env:
