@@ -24,9 +24,6 @@ categories:
   # Maxxess (Izberg)
   - https://www.maxxess.fr/categorie/casque-integral-16/SHOEI
   - https://www.maxxess.fr/categorie/casque-jet-18/SHOEI
-  # Team Axe (Cloudflare → scraper Firefox interne). Intégral via page marque, J-Cruise via cat. jet.
-  - https://www.teamaxe.com/fr/marques/17_shoei
-  - https://www.teamaxe.com/fr/13-casque-jet-moto-et-scooter
 
 # --- Produits unitaires (optionnel) ---
 # url (requis) · label (option.) · sizes (option., liste blanche de tailles)

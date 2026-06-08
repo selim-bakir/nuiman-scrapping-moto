@@ -11,9 +11,10 @@ from .izberg import IzbergScraper
 from .motoblouz import MotoblouzScraper
 from .motoshopping import MotoshoppingScraper
 from .speedway import SpeedwayScraper
-from .teamaxe import TeamAxeScraper
 
 # Pour ajouter un site : instancier le scraper ici.
+# (Team Axe écarté : Cloudflare nécessite Firefox + scraping lent ; scraper conservé
+#  dans teamaxe.py mais non branché.)
 _SCRAPERS: list[BaseScraper] = [
     MotoblouzScraper(),
     MotoshoppingScraper(),
@@ -21,7 +22,6 @@ _SCRAPERS: list[BaseScraper] = [
     IcasqueScraper(),
     SpeedwayScraper(),
     IzbergScraper(),
-    TeamAxeScraper(),
 ]
 
 
