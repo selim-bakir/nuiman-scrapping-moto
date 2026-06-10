@@ -6,6 +6,7 @@ from io import BytesIO
 from pathlib import Path
 
 import requests
+from PIL import Image as PILImage
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -37,12 +38,21 @@ def _ordered_sizes(results) -> list[str]:
 
 
 def _thumb(url: str | None) -> bytes | None:
+    """Télécharge la vignette et la convertit en PNG.
+
+    Le CDN peut servir du .webp (notamment depuis les serveurs GitHub Actions),
+    qu'openpyxl ne sait pas enregistrer (KeyError '.webp' au save). On normalise
+    donc toujours en PNG.
+    """
     if not url:
         return None
     try:
         r = requests.get(url.replace("/rs580/", "/rs150/"), timeout=15)
         if r.status_code == 200 and r.content:
-            return r.content
+            im = PILImage.open(BytesIO(r.content)).convert("RGB")
+            buf = BytesIO()
+            im.save(buf, format="PNG")
+            return buf.getvalue()
     except Exception:
         pass
     return None
