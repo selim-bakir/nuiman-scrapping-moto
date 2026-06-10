@@ -7,9 +7,10 @@
 categories:
   # Motoblouz (tous casques Shoei ; filtrés ensuite par le focus)
   - https://www.motoblouz.com/marque/shoei/casque.html
-  # Motoshopping (GT-Air 3 + J-Cruise 3)
-  - https://www.motoshopping.com/3-casque-moto-integral/gt_air_3
-  - https://www.motoshopping.com/11-casque-moto-jet/casques_shoei
+  # Motoshopping DÉSACTIVÉ : bloque les IP des serveurs GitHub Actions (anti-bot
+  # datacenter). Le scraper reste dans le code, réactivable via proxy si besoin.
+  # - https://www.motoshopping.com/3-casque-moto-integral/gt_air_3
+  # - https://www.motoshopping.com/11-casque-moto-jet/casques_shoei
   # Dafy Moto (casques Shoei ; filtrés ensuite par le focus)
   - https://www.dafy-moto.com/marque/shoei/casque-integral.html
   # iCasque (GT-Air 3 + J-Cruise 3)
