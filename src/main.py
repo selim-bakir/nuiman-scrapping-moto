@@ -355,18 +355,19 @@ def main() -> int:
     report = asyncio.run(run_scraping(settings))
     saved = _save_report(report)
     text = build_report_text(report)
-
-    # Export Excel quotidien (snapshot complet, ruptures en tête).
     xlsx_path = REPORTS_DIR / f"rapport_{report.generated_at:%Y-%m-%d}.xlsx"
-    build_xlsx(report, xlsx_path)
 
     print(f"Rapport sauvegardé : {saved}")
-    print(f"Export Excel : {xlsx_path}")
     print("-" * 60)
     print(text)
     print("-" * 60)
 
     if args.dry_run:
+        try:
+            build_xlsx(report, xlsx_path)
+            print(f"Export Excel : {xlsx_path}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"! Excel non généré : {exc}", file=sys.stderr)
         print("[dry-run] Envoi Telegram ignoré.")
         return 0
 
@@ -378,6 +379,8 @@ def main() -> int:
         return 1
 
     token, chat = settings.telegram_bot_token, settings.telegram_chat_id
+
+    # 1) Le rapport Telegram est PRIORITAIRE — il ne doit jamais être bloqué par l'Excel.
     if args.text:
         chunks = split_for_telegram(text)
         send_report(token, chat, chunks)
@@ -386,12 +389,16 @@ def main() -> int:
         n = _send_photo_report(token, chat, report)
         print(f"Rapport photo envoyé sur Telegram ({n} message(s)).")
 
-    # Envoi du fichier Excel en pièce jointe.
-    send_document(
-        token, chat, str(xlsx_path),
-        caption=f"📊 Export Excel — {report.generated_at:%d/%m/%Y}",
-    )
-    print(f"Export Excel envoyé sur Telegram : {xlsx_path.name}")
+    # 2) Excel en pièce jointe (best-effort : un échec n'annule pas le rapport déjà envoyé).
+    try:
+        build_xlsx(report, xlsx_path)
+        send_document(
+            token, chat, str(xlsx_path),
+            caption=f"📊 Export Excel — {report.generated_at:%d/%m/%Y}",
+        )
+        print(f"Export Excel envoyé sur Telegram : {xlsx_path.name}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"! Export Excel non envoyé : {exc}", file=sys.stderr)
     return 0
 
 
