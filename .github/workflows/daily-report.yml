@@ -2,11 +2,12 @@ name: Rapport quotidien dispo moto
 
 on:
   schedule:
-    # Cible 7h00 à Paris toute l'année (le script ignore le mauvais créneau via le
-    # garde-fou horaire). 05:00 UTC = 7h Paris l'été ; 06:00 UTC = 7h Paris l'hiver.
-    # Avec ~5 min d'exécution, le rapport arrive vers 7h05–7h20.
-    - cron: "0 5 * * *"
-    - cron: "0 6 * * *"
+    # 3 créneaux par heure (minutes 7/27/47, JAMAIS l'heure pile que GitHub sature
+    # et saute) : si GitHub en rate un, le suivant rattrape. Le script n'exécute
+    # qu'à 7h Paris (garde-fou DST) et UNE seule fois/jour (anti-doublon via l'API).
+    # 05h UTC = 7h Paris l'été ; 06h UTC = 7h Paris l'hiver.
+    - cron: "7,27,47 5 * * *"
+    - cron: "7,27,47 6 * * *"
   # Permet de lancer le rapport manuellement depuis l'onglet Actions.
   workflow_dispatch: {}
 
@@ -14,6 +15,8 @@ jobs:
   report:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    permissions:
+      actions: read   # pour l'anti-doublon (lecture des runs du jour)
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +34,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SCRAPE_CONCURRENCY: "5"
           REQUEST_DELAY_MS: "200"
         run: python -m src.main
