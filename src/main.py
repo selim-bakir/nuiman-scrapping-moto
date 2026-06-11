@@ -316,6 +316,56 @@ def _send_photo_report(token: str, chat_id: str, report: Report) -> int:
     return sent
 
 
+def _already_sent_today() -> bool:
+    """Anti-doublon : True si un run du jour a déjà ENVOYÉ le rapport.
+
+    Plusieurs créneaux cron se déclenchent le matin (filet de sécurité contre les
+    sauts de GitHub). On évite d'envoyer plusieurs fois : un run d'envoi dure
+    plusieurs minutes ; un skip ne dure que quelques secondes. On considère donc
+    qu'un run du jour ayant duré > 2 min = un envoi déjà effectué.
+    Fail-open : en cas de souci d'API, on n'empêche pas l'envoi.
+    """
+    import json as _json
+    import urllib.request
+
+    token = os.getenv("GITHUB_TOKEN")
+    repo = os.getenv("GITHUB_REPOSITORY")
+    me = os.getenv("GITHUB_RUN_ID")
+    if not (token and repo):
+        return False
+    try:
+        from zoneinfo import ZoneInfo
+
+        paris = ZoneInfo("Europe/Paris")
+        today = datetime.now(paris).date()
+        url = (
+            f"https://api.github.com/repos/{repo}/actions/workflows/"
+            "daily-report.yml/runs?per_page=30"
+        )
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = _json.load(resp)
+        for run in data.get("workflow_runs", []):
+            if str(run.get("id")) == str(me) or run.get("conclusion") != "success":
+                continue
+            started, updated = run.get("run_started_at"), run.get("updated_at")
+            if not (started and updated):
+                continue
+            t0 = datetime.fromisoformat(started.replace("Z", "+00:00"))
+            t1 = datetime.fromisoformat(updated.replace("Z", "+00:00"))
+            if t0.astimezone(paris).date() == today and (t1 - t0).total_seconds() > 120:
+                return True
+    except Exception:
+        return False
+    return False
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Rapport disponibilité casques moto")
     parser.add_argument(
@@ -330,9 +380,9 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    # Garde-fou horaire : deux crons UTC sont déclarés (un pour l'heure d'été, un
-    # pour l'hiver) pour viser 7h Paris toute l'année. On n'exécute que celui qui
-    # tombe bien — sauf lancement manuel (workflow_dispatch / local / --dry-run).
+    # Garde-fous (uniquement pour les déclenchements cron ; manuel/local = toujours).
+    # 1) On ne tourne qu'à 7h Paris (deux jeux de crons UTC gèrent été/hiver).
+    # 2) Anti-doublon : si un créneau a déjà envoyé ce matin, on s'abstient.
     if os.getenv("GITHUB_EVENT_NAME") == "schedule" and not args.dry_run:
         try:
             from zoneinfo import ZoneInfo
@@ -342,6 +392,9 @@ def main() -> int:
             paris_hour = 7  # en cas de souci, on n'empêche pas l'envoi
         if paris_hour != 7:
             print(f"[skip] créneau cron hors 7h Paris (il est {paris_hour}h) — pas d'envoi.")
+            return 0
+        if _already_sent_today():
+            print("[skip] rapport déjà envoyé ce matin (anti-doublon) — pas de second envoi.")
             return 0
 
     settings = load_settings()
