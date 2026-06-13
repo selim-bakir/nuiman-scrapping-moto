@@ -380,9 +380,13 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    # Garde-fous (uniquement pour les déclenchements cron ; manuel/local = toujours).
-    # 1) On ne tourne qu'à 7h Paris (deux jeux de crons UTC gèrent été/hiver).
-    # 2) Anti-doublon : si un créneau a déjà envoyé ce matin, on s'abstient.
+    # Garde-fous (uniquement pour les crons GitHub ; manuel/dispatch externe/local = toujours).
+    # Les crons GitHub sur repo public sont "best-effort" et arrivent souvent avec
+    # plusieurs heures de retard (vu : déclenchement prévu 7h, réel 11h-12h). Un
+    # garde-fou strict "heure == 7" tuait ces runs retardés → aucun envoi. On élargit
+    # donc à une fenêtre matin→début d'après-midi (5h-13h Paris, couvre été/hiver +
+    # retard GitHub) et on s'appuie sur l'anti-doublon pour n'envoyer qu'UNE fois/jour
+    # (y compris si un dispatch externe à 7h a déjà envoyé avant le cron retardé).
     if os.getenv("GITHUB_EVENT_NAME") == "schedule" and not args.dry_run:
         try:
             from zoneinfo import ZoneInfo
@@ -390,11 +394,11 @@ def main() -> int:
             paris_hour = datetime.now(ZoneInfo("Europe/Paris")).hour
         except Exception:
             paris_hour = 7  # en cas de souci, on n'empêche pas l'envoi
-        if paris_hour != 7:
-            print(f"[skip] créneau cron hors 7h Paris (il est {paris_hour}h) — pas d'envoi.")
+        if not (5 <= paris_hour <= 13):
+            print(f"[skip] créneau cron hors fenêtre 5h-13h Paris (il est {paris_hour}h) — pas d'envoi.")
             return 0
         if _already_sent_today():
-            print("[skip] rapport déjà envoyé ce matin (anti-doublon) — pas de second envoi.")
+            print("[skip] rapport déjà envoyé aujourd'hui (anti-doublon) — pas de second envoi.")
             return 0
 
     settings = load_settings()
